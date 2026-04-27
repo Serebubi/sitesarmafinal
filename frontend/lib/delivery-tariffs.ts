@@ -8,7 +8,10 @@ export type CityKey =
   | "lugansk"
   | "berdyansk"
   | "melitopol"
-  | "genichesk";
+  | "genichesk"
+  | "moscow";
+
+export type PickupPointType = "pvz" | "warehouse";
 
 export type CargoCategory =
   | "Малая"
@@ -34,6 +37,15 @@ export type CourierTariff = {
   destination: string;
 };
 
+export type CityPickupPoint = {
+  type: PickupPointType;
+  label: string;
+  address: string;
+  thresholdKg?: number;
+  hours: string;
+  contact: string;
+};
+
 export const cities: Array<{ key: CityKey; label: string; matrixLabel: string }> = [
   { key: "rostov", label: "Ростов-на-Дону", matrixLabel: "Ростов" },
   { key: "donetsk", label: "Донецк", matrixLabel: "Донецк" },
@@ -45,7 +57,99 @@ export const cities: Array<{ key: CityKey; label: string; matrixLabel: string }>
   { key: "berdyansk", label: "Бердянск", matrixLabel: "Бердянск" },
   { key: "melitopol", label: "Мелитополь", matrixLabel: "Мелитополь" },
   { key: "genichesk", label: "Геническ", matrixLabel: "Геническ" },
+  { key: "moscow", label: "Москва", matrixLabel: "Москва" },
 ];
+
+export const pickupPointTypeLabels: Record<PickupPointType, string> = {
+  pvz: "ПВЗ",
+  warehouse: "Склад",
+};
+
+export const cityPickupPoints: Partial<Record<CityKey, CityPickupPoint[]>> = {
+  donetsk: [
+    {
+      type: "pvz",
+      label: "ПВЗ",
+      address: "Ворошиловский р-н, ул. Челюскинцев, 184 (по Шевченко)",
+      thresholdKg: 30,
+      hours: "Ежедневно, 09:00–18:00",
+      contact: "7 (949) 539-60-30",
+    },
+    {
+      type: "warehouse",
+      label: "Склад",
+      address: "ул. Куйбышева, 70/13 (Стройдеревня, 8 склад)",
+      hours: "Пн–Пт, 08:00–18:00, Вс — выходной",
+      contact: "7 (949) 050-22-48",
+    },
+  ],
+  volnovakha: [
+    {
+      type: "pvz",
+      label: "ПВЗ",
+      address: "ул. Менделеева, 14",
+      thresholdKg: 100,
+      hours: "Пн 10:00–18:00, Вт–Сб 09:00–18:00, Вс — выходной",
+      contact: "7 (949) 619-66-42",
+    },
+  ],
+  makeevka: [
+    {
+      type: "pvz",
+      label: "ПВЗ",
+      address: "ул. Островского, 3/18",
+      thresholdKg: 15,
+      hours: "Вт–Пт 09:00–18:00, Сб 09:00–15:00",
+      contact: "7 (949) 435-16-70",
+    },
+  ],
+  gorlovka: [
+    {
+      type: "pvz",
+      label: "ПВЗ",
+      address: "пр. Победы, 16",
+      thresholdKg: 30,
+      hours: "Пн–Пт 09:00–16:00, Сб–Вс 09:00–15:00",
+      contact: "7 (949) 854-25-63",
+    },
+    {
+      type: "warehouse",
+      label: "Склад",
+      address: "ул. Интернациональная, 76",
+      hours: "Пн–Пт 09:00–17:00, Сб 10:00–14:00, Вс — выходной",
+      contact: "7 (949) 053-62-63",
+    },
+  ],
+  melitopol: [
+    {
+      type: "pvz",
+      label: "ПВЗ",
+      address: "ул. Горького, 55",
+      thresholdKg: 25,
+      hours: "Пн–Пт 09:30–17:00, перерыв 13:00–13:30; Сб 09:30–14:30, Вс — выходной",
+      contact: "7 (990) 000-42-81",
+    },
+  ],
+  rostov: [
+    {
+      type: "warehouse",
+      label: "Склад",
+      address: "ул. Арсенальная 1, Вавилова (71Ж/2)",
+      hours: "Ежедневно, 10:00–21:00",
+      contact: "7 (989) 500-00-38",
+    },
+  ],
+  mariupol: [
+    {
+      type: "pvz",
+      label: "ПВЗ",
+      address: "60 лет СССР, дом 8",
+      thresholdKg: 50,
+      hours: "Пн–Сб, 10:00–19:00",
+      contact: "7 (949) 513-48-48",
+    },
+  ],
+};
 
 export const tariffBands: TariffBand[] = [
   { min: 0, max: 1, label: "до 1 кг", baseTariff: 350, category: "Малая" },
@@ -84,6 +188,7 @@ export const routeCoefficients: Record<CityKey, Partial<Record<CityKey, number>>
   berdyansk: { rostov: 1.6, donetsk: 1, mariupol: 0.5, volnovakha: 0.7, makeevka: 1, gorlovka: 1.2, lugansk: 1.8, melitopol: 0.6, genichesk: 0.9 },
   melitopol: { rostov: 2, donetsk: 1.4, mariupol: 0.8, volnovakha: 1, makeevka: 1.4, gorlovka: 1.5, lugansk: 2.1, berdyansk: 0.6, genichesk: 0.5 },
   genichesk: { rostov: 2.3, donetsk: 1.7, mariupol: 1, volnovakha: 1.4, makeevka: 1.8, gorlovka: 1.9, lugansk: 2.5, berdyansk: 0.9, melitopol: 0.5 },
+  moscow: {},
 };
 
 export const routeTerms: Record<string, string> = {
@@ -182,14 +287,26 @@ export const routeTerms: Record<string, string> = {
 export const courierTariffs: Record<CargoCategory, CourierTariff> = {
   Малая: { fixed: 300, loaders: 0, stairPerFloor: 0, elevatorFee: 0, destination: "до двери" },
   Стандартная: { fixed: 400, loaders: 0, stairPerFloor: 0, elevatorFee: 0, destination: "до двери" },
-  Средняя: { fixed: 700, loaders: 500, stairPerFloor: 50, elevatorFee: 300, destination: "до подъезда" },
-  Крупная: { fixed: 1000, loaders: 1000, stairPerFloor: 100, elevatorFee: 300, destination: "до подъезда" },
-  Тяжёлая: { fixed: 1000, loaders: 1000, stairPerFloor: 350, elevatorFee: 300, destination: "до подъезда" },
-  Сверхтяжёлая: { fixed: 1500, loaders: 2000, stairPerFloor: 500, elevatorFee: 300, destination: "до подъезда" },
+  Средняя: { fixed: 700, loaders: 500, stairPerFloor: 50, elevatorFee: 0, destination: "до подъезда" },
+  Крупная: { fixed: 1000, loaders: 1000, stairPerFloor: 100, elevatorFee: 0, destination: "до подъезда" },
+  Тяжёлая: { fixed: 1500, loaders: 1000, stairPerFloor: 350, elevatorFee: 0, destination: "до подъезда" },
+  Сверхтяжёлая: { fixed: 2000, loaders: 2000, stairPerFloor: 500, elevatorFee: 0, destination: "до подъезда" },
 };
 
 export function getCityLabel(key: CityKey) {
   return cities.find((city) => city.key === key)?.label ?? key;
+}
+
+export function getAvailablePickupPointTypes(city: CityKey) {
+  return Array.from(new Set((cityPickupPoints[city] ?? []).map((point) => point.type)));
+}
+
+export function getPickupPoint(city: CityKey, type: PickupPointType | null) {
+  if (!type) {
+    return undefined;
+  }
+
+  return cityPickupPoints[city]?.find((point) => point.type === type);
 }
 
 export function getTariffBand(weight: number) {

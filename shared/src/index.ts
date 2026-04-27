@@ -42,20 +42,6 @@ export const marketplaces = [
     domains: ["wildberries.ru", "www.wildberries.ru"],
   },
   {
-    id: "wildberries_opt",
-    label: "WILDBERRIES ОПТ",
-    asset: "WB ОПТ.png",
-    parserMode: "supported",
-    domains: ["wildberries.ru", "www.wildberries.ru"],
-  },
-  {
-    id: "wildberries_premium",
-    label: "WILDBERRIES Дорогостой",
-    asset: "WB Дорогостой.png",
-    parserMode: "supported",
-    domains: ["wildberries.ru", "www.wildberries.ru"],
-  },
-  {
     id: "ozon",
     label: "OZON",
     asset: "ozon.png",
@@ -112,8 +98,6 @@ export const marketplaceExampleUrls: Record<MarketplaceId, string> = {
   dpd: "https://market.dpd.ru/product/besprovodnye-naushniki",
   avito: "https://www.avito.ru/moskva/telefony/iphone_15_1234567890",
   wildberries: "https://www.wildberries.ru/catalog/123456789/detail.aspx",
-  wildberries_opt: "https://www.wildberries.ru/catalog/123456789/detail.aspx",
-  wildberries_premium: "https://www.wildberries.ru/catalog/123456789/detail.aspx",
   ozon: "https://www.ozon.ru/product/besprovodnye-naushniki-123456789/",
   yandex_market: "https://market.yandex.ru/product--besprovodnye-naushniki/123456789",
   lamoda: "https://www.lamoda.ru/p/mp002xw0abcd/",
@@ -123,11 +107,93 @@ export const marketplaceExampleUrls: Record<MarketplaceId, string> = {
 };
 
 export const pickupPointOptions = [
-  { id: "grushevskogo_mariupol", label: "Мариуполь, улица 60 лет СССР" },
-  { id: "chelyuskintsev_donetsk", label: "Донецк, улица Челюскинцев 184" },
-  { id: "kubysheva_warehouse", label: "Донецк, улица Куйбышева 70/13" },
-  { id: "mendeleeva_volnovakha", label: "Волноваха, ул. Менделеева 14" },
-  { id: "ostrovskogo_makeevka", label: "Макеевка, ул. Островского 3/18" },
+  {
+    id: "chelyuskintsev_donetsk",
+    label: "Донецк, ПВЗ",
+    city: "Донецк",
+    pointType: "ПВЗ",
+    address: "Ворошиловский р-н, ул. Челюскинцев, 184 (по Шевченко)",
+    thresholdKg: 30,
+    hours: "Ежедневно, 09:00–18:00",
+    contact: "7 (949) 539-60-30",
+  },
+  {
+    id: "kubysheva_warehouse",
+    label: "Донецк, склад",
+    city: "Донецк",
+    pointType: "Склад",
+    address: "ул. Куйбышева, 70/13 (Стройдеревня, 8 склад)",
+    hours: "Пн–Пт, 08:00–18:00, Вс — выходной",
+    contact: "7 (949) 050-22-48",
+  },
+  {
+    id: "mendeleeva_volnovakha",
+    label: "Волноваха, ПВЗ",
+    city: "Волноваха",
+    pointType: "ПВЗ",
+    address: "ул. Менделеева, 14",
+    thresholdKg: 100,
+    hours: "Пн 10:00–18:00, Вт–Сб 09:00–18:00, Вс — выходной",
+    contact: "7 (949) 619-66-42",
+  },
+  {
+    id: "ostrovskogo_makeevka",
+    label: "Макеевка, ПВЗ",
+    city: "Макеевка",
+    pointType: "ПВЗ",
+    address: "ул. Островского, 3/18",
+    thresholdKg: 15,
+    hours: "Вт–Пт 09:00–18:00, Сб 09:00–15:00",
+    contact: "7 (949) 435-16-70",
+  },
+  {
+    id: "pobedy_gorlovka",
+    label: "Горловка, ПВЗ",
+    city: "Горловка",
+    pointType: "ПВЗ",
+    address: "пр. Победы, 16",
+    thresholdKg: 30,
+    hours: "Пн–Пт 09:00–16:00, Сб–Вс 09:00–15:00",
+    contact: "7 (949) 854-25-63",
+  },
+  {
+    id: "internatsionalnaya_gorlovka_warehouse",
+    label: "Горловка, склад",
+    city: "Горловка",
+    pointType: "Склад",
+    address: "ул. Интернациональная, 76",
+    hours: "Пн–Пт 09:00–17:00, Сб 10:00–14:00, Вс — выходной",
+    contact: "7 (949) 053-62-63",
+  },
+  {
+    id: "gorkogo_melitopol",
+    label: "Мелитополь, ПВЗ",
+    city: "Мелитополь",
+    pointType: "ПВЗ",
+    address: "ул. Горького, 55",
+    thresholdKg: 25,
+    hours: "Пн–Пт 09:30–17:00 (перерыв 13:00–13:30), Сб 09:30–14:30, Вс — выходной",
+    contact: "7 (990) 000-42-81",
+  },
+  {
+    id: "arsenalnaya_rostov_warehouse",
+    label: "Ростов-на-Дону, склад",
+    city: "Ростов-на-Дону",
+    pointType: "Склад",
+    address: "ул. Арсенальная 1, Вавилова (71Ж/2)",
+    hours: "Ежедневно, 10:00–21:00",
+    contact: "7 (989) 500-00-38",
+  },
+  {
+    id: "grushevskogo_mariupol",
+    label: "Мариуполь, ПВЗ",
+    city: "Мариуполь",
+    pointType: "ПВЗ",
+    address: "60 лет СССР, дом 8",
+    thresholdKg: 50,
+    hours: "Пн–Сб, 10:00–19:00",
+    contact: "7 (949) 513-48-48",
+  },
 ] as const;
 
 export type PickupPointId = (typeof pickupPointOptions)[number]["id"];
@@ -280,19 +346,6 @@ export const createPaidPickupOrderSchema = z
       return;
     }
 
-    if (payload.marketplace === "wildberries_premium") {
-      if (!payload.firstName) {
-        ctx.addIssue({ code: "custom", path: ["firstName"], message: "Укажите имя" });
-      }
-      if (!payload.lastName) {
-        ctx.addIssue({ code: "custom", path: ["lastName"], message: "Укажите фамилию" });
-      }
-      if (payload.totalAmount == null) {
-        ctx.addIssue({ code: "custom", path: ["totalAmount"], message: "Укажите стоимость товара" });
-      }
-      return;
-    }
-
     if (payload.marketplace === "bulky") {
       if (!payload.firstName) {
         ctx.addIssue({ code: "custom", path: ["firstName"], message: "Укажите имя" });
@@ -302,6 +355,16 @@ export const createPaidPickupOrderSchema = z
       }
       if (!payload.senderName) {
         ctx.addIssue({ code: "custom", path: ["senderName"], message: "Укажите название отправителя или интернет-магазина" });
+      }
+      return;
+    }
+
+    if (payload.marketplace === "wildberries" || payload.marketplace === "ozon") {
+      if (!payload.firstName) {
+        ctx.addIssue({ code: "custom", path: ["firstName"], message: "Укажите имя" });
+      }
+      if (!payload.lastName) {
+        ctx.addIssue({ code: "custom", path: ["lastName"], message: "Укажите фамилию" });
       }
       return;
     }

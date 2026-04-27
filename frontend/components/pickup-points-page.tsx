@@ -3,12 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 
 import { SarmaExpressHeader } from "@/components/sarma-express-header";
+import { pickupPointOptions } from "shared";
 
 type PickupPoint = {
   id: string;
   city: string;
+  pointType: string;
   address: string;
-  coordinates: [number, number];
+  hours: string;
+  contact: string;
+  coordinates?: [number, number];
   geocodeQuery?: string;
 };
 
@@ -74,43 +78,24 @@ declare global {
   }
 }
 
-const pickupPoints: PickupPoint[] = [
-  {
-    id: "mariupol-60-let-sssr-8",
-    city: "Мариуполь",
-    address: "улица 60 лет СССР",
-    coordinates: [47.120196, 37.5122688],
-    geocodeQuery: "Мариуполь, улица 60 лет СССР",
-  },
-  {
-    id: "donetsk-chelyuskintsev-184",
-    city: "Донецк",
-    address: "улица Челюскинцев, 184",
-    coordinates: [48.0081003, 37.8078437],
-    geocodeQuery: "Донецк, улица Челюскинцев, 184",
-  },
-  {
-    id: "donetsk-kuibysheva-70-13",
-    city: "Донецк",
-    address: "улица Куйбышева, 70/13",
-    coordinates: [47.9949161, 37.7690267],
-    geocodeQuery: "Донецк, улица Куйбышева, 70/13",
-  },
-  {
-    id: "volnovakha-mendeleeva-14",
-    city: "Волноваха",
-    address: "улица Менделеева, 14",
-    coordinates: [47.5155566, 37.5341609],
-    geocodeQuery: "Волноваха, улица Менделеева, 14",
-  },
-  {
-    id: "makeevka-ostrovskogo-3-18",
-    city: "Макеевка",
-    address: "улица Островского, 3/18",
-    coordinates: [48.0436158, 37.965839],
-    geocodeQuery: "Макеевка, улица Островского, 3/18",
-  },
-];
+const pickupPointCoordinates: Partial<Record<(typeof pickupPointOptions)[number]["id"], [number, number]>> = {
+  chelyuskintsev_donetsk: [48.0081003, 37.8078437],
+  kubysheva_warehouse: [47.9949161, 37.7690267],
+  mendeleeva_volnovakha: [47.5155566, 37.5341609],
+  ostrovskogo_makeevka: [48.0436158, 37.965839],
+  grushevskogo_mariupol: [47.120196, 37.5122688],
+};
+
+const pickupPoints: PickupPoint[] = pickupPointOptions.map((point) => ({
+  id: point.id,
+  city: point.city,
+  pointType: point.pointType,
+  address: point.address,
+  hours: point.hours,
+  contact: point.contact,
+  coordinates: pickupPointCoordinates[point.id],
+  geocodeQuery: `${point.city}, ${point.address}`,
+}));
 
 const initialPickupPointId = pickupPoints[0]?.id ?? "";
 const defaultMapCenter: [number, number] = [47.9936, 37.8026];
@@ -134,7 +119,7 @@ export function PickupPointsPage() {
       return true;
     }
 
-    return `${point.city} ${point.address}`.toLowerCase().includes(search);
+    return `${point.city} ${point.pointType} ${point.address} ${point.hours} ${point.contact}`.toLowerCase().includes(search);
   });
 
   const visibleActivePointId = filteredPoints.some((point) => point.id === activePointId)
@@ -196,9 +181,9 @@ export function PickupPointsPage() {
           const placemark = new ymaps.Placemark(
             coordinates,
             {
-              balloonContentHeader: point.city,
-              balloonContentBody: point.address,
-              hintContent: `${point.city}, ${point.address}`,
+              balloonContentHeader: `${point.city}, ${point.pointType}`,
+              balloonContentBody: `<strong>${point.address}</strong><br/>${point.hours}<br/>${point.contact}`,
+              hintContent: `${point.city}, ${point.pointType}, ${point.address}`,
             },
             {
               preset: point.id === initialPickupPointId ? "islands#darkBlueCircleDotIcon" : "islands#blueCircleDotIcon",
@@ -291,7 +276,7 @@ export function PickupPointsPage() {
             </h1>
 
             <p className="mt-5 max-w-[640px] text-base leading-7 text-white/86 sm:text-lg">
-              Нажмите на адрес в списке, чтобы открыть точку на карте и быстро посмотреть расположение пункта выдачи.
+              Нажмите на адрес в списке, чтобы открыть точку на карте и посмотреть адрес, график работы и контакт.
             </p>
           </div>
 
@@ -332,10 +317,14 @@ export function PickupPointsPage() {
                           : "border-[#d7e4f7] bg-white/86 hover:border-[#b8cff3] hover:bg-white"
                       }`}
                     >
-                      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#6b8bb8]">{point.city}</p>
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#6b8bb8]">
+                        {point.city} · {point.pointType}
+                      </p>
                       <p className="mt-2 text-[1.02rem] font-semibold leading-7 text-[#123763]">
                         {point.city}, {point.address}
                       </p>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-[#5b7398]">{point.hours}</p>
+                      <p className="mt-1 text-sm font-bold text-[#3564bc]">{point.contact}</p>
                     </button>
                   );
                 })}
