@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { SarmaExpressHeader } from "@/components/sarma-express-header";
@@ -8,33 +7,6 @@ const featureCards = [
   { title: "Работаем с B2B и частными клиентами", icon: HandshakeIcon },
   { title: "Доставка от 24 часов", icon: TimeIcon },
   { title: "Склады и пункты выдачи", icon: PinIcon },
-];
-
-const serviceCards = [
-  {
-    title: "ЭКСПРЕСС ДОСТАВКА",
-    imageSrc: "/services/express-delivery.png",
-    imageAlt: "Экспресс доставка",
-    href: "/superbox?flow=pickup_paid",
-  },
-  {
-    title: "LTL - СБОРНЫЕ ГРУЗЫ",
-    imageSrc: "/services/ltl-cargo.png",
-    imageAlt: "Сборные грузы",
-    href: "/ltl",
-  },
-  {
-    title: "FTL - ПОЛНАЯ ЗАГРУЗКА",
-    imageSrc: "/services/ftl-full-load.png",
-    imageAlt: "Полная загрузка",
-    href: "/ftl",
-  },
-  {
-    title: "ДОСТАВКА ИЗ ИНТЕРНЕТ-МАГАЗИНОВ",
-    imageSrc: "/services/internet-delivery.png",
-    imageAlt: "Доставка из интернет-магазинов",
-    href: "/superbox?flow=pickup_paid",
-  },
 ];
 
 export function SarmaExpressPage() {
@@ -98,30 +70,6 @@ export function SarmaExpressPage() {
         </div>
       </section>
 
-      <section id="services" className="mx-auto w-full max-w-[1240px] px-4 pb-20 pt-8 lg:px-6 lg:pb-28">
-        <div className="max-w-[520px]">
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-[#356ac8]">Сарма Экспресс</p>
-          <h2 className="mt-2 text-4xl font-extrabold tracking-[-0.04em] text-[#102a4e] sm:text-[3.2rem]">Наши услуги:</h2>
-        </div>
-
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          {serviceCards.map(({ title, imageSrc, imageAlt, href }) => (
-            <Link
-              key={title}
-              href={href}
-              className="group flex min-h-[332px] flex-col rounded-[28px] bg-white px-6 pb-8 pt-7 shadow-[0_24px_50px_rgba(16,45,88,0.1)] ring-1 ring-[#dce6f4] transition-transform duration-200 hover:-translate-y-1"
-            >
-              <div className="relative flex h-[180px] items-center justify-center overflow-hidden rounded-[24px] bg-[radial-gradient(circle_at_50%_35%,rgba(108,169,255,0.22),transparent_45%),linear-gradient(180deg,#fafdff_0%,#eef4ff_100%)]">
-                <div className="absolute inset-5 rounded-[24px] bg-[radial-gradient(circle_at_50%_15%,rgba(75,138,229,0.16),transparent_45%)]" />
-                <div className="relative h-[154px] w-[154px] sm:h-[160px] sm:w-[160px]">
-                  <Image src={imageSrc} alt={imageAlt} fill sizes="160px" className="object-contain" />
-                </div>
-              </div>
-              <h3 className="mt-7 text-center text-[1.28rem] font-black leading-tight text-[#111f36]">{title}</h3>
-            </Link>
-          ))}
-        </div>
-      </section>
     </main>
   );
 }

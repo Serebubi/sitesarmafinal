@@ -36,7 +36,6 @@ const includedItems = [
 
 const excludedItems = [
   "Погрузка и выгрузка - на стороне отправителя и получателя",
-  "Грузчики - найдём под запрос",
   "Страхование с объявленной ценностью - по запросу",
   "Простой сверх нормы - по договору",
 ];
@@ -61,7 +60,7 @@ export function FtlPage() {
 
   return (
     <main className="min-h-screen bg-[#edf2f8] text-[#12243f]">
-      <SarmaExpressHeader />
+      <SarmaExpressHeader activeItem="ftl" />
 
       <section
         className="relative overflow-hidden bg-[#3f84e6] bg-cover bg-[position:74%_center] bg-no-repeat"
