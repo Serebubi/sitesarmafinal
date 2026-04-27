@@ -105,17 +105,7 @@ export function createOrderRouter(orderService: OrderService) {
                     shipmentNumber: body.shipmentNumber,
                     pickupCode: body.pickupCode,
                   }
-                : body.marketplace === "wildberries_premium"
-                  ? {
-                      orderType: body.orderType,
-                      marketplace: body.marketplace,
-                      pickupPoint: body.pickupPoint,
-                      firstName: body.firstName,
-                      lastName: body.lastName,
-                      phone: body.phone,
-                      totalAmount: parseOptionalNumberField(body.totalAmount, "Общая сумма"),
-                    }
-                  : body.marketplace === "bulky"
+                : body.marketplace === "bulky"
                     ? {
                         orderType: body.orderType,
                         marketplace: body.marketplace,
@@ -155,22 +145,12 @@ export function createOrderRouter(orderService: OrderService) {
                         };
         const payload = createOrderSchema.parse(rawPayload);
 
-        if (payload.orderType === "pickup_paid" && payload.marketplace === "wildberries_premium") {
-          if (!productAttachmentFile) {
-            throw new HttpError(400, "Прикрепите скриншот товара.");
-          }
-          if (!attachmentFile) {
-            throw new HttpError(400, "Приложите штрих-код или QR код для получения.");
-          }
-        }
-
         if (payload.orderType === "pickup_paid" && payload.marketplace === "bulky" && bulkyAttachmentFiles.length === 0) {
           throw new HttpError(400, "Прикрепите QR, штрих-код или скриншот товара.");
         }
 
         if (
           payload.orderType === "pickup_paid" &&
-          payload.marketplace !== "wildberries_premium" &&
           payload.marketplace !== "cdek" &&
           payload.marketplace !== "5post" &&
           payload.marketplace !== "dpd" &&

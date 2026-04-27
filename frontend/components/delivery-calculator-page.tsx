@@ -5,23 +5,43 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { SarmaExpressHeader } from "@/components/sarma-express-header";
 import {
   cities,
+  cityPickupPoints,
   courierTariffs,
   getCityLabel,
   getRouteTerm,
   getTariffBand,
   routeCoefficients,
   type CityKey,
+  type CityPickupPoint,
   type CourierTariff,
   type TariffBand,
 } from "@/lib/delivery-tariffs";
 
 type AddressType = "apartment" | "private";
+type DeliveryMode = "pvz" | "warehouse" | "courier";
+type CalculatorDialog = "order" | "request" | "phones" | null;
+type DeliveryLegResolution =
+  | {
+      kind: "pickup";
+      label: "ПВЗ" | "Склад";
+      point: CityPickupPoint;
+      note?: string;
+    }
+  | {
+      kind: "courier";
+      label: "Курьер";
+      note?: string;
+    };
 
 type CalculatorState = {
   from: CityKey;
   to: CityKey;
+  fromMode: DeliveryMode;
+  toMode: DeliveryMode;
   weight: string;
-  volume: string;
+  length: string;
+  width: string;
+  height: string;
   addressType: AddressType;
   floor: string;
   hasElevator: boolean;
@@ -32,6 +52,13 @@ type CalculatorState = {
 type CalculationResult =
   | { status: "same-route" | "no-route" }
   | { status: "empty"; coefficient?: number; term?: string }
+  | {
+      status: "moscow-special";
+      actualWeight: number;
+      volumeWeight: number;
+      chargeableWeight: number;
+      term: string;
+    }
   | {
       status: "special";
       actualWeight: number;
@@ -49,6 +76,9 @@ type CalculationResult =
       term: string;
       band: TariffBand;
       courier: CourierTariff;
+      courierLegs: number;
+      fromLeg: DeliveryLegResolution;
+      toLeg: DeliveryLegResolution;
       transportCost: number;
       courierCost: number;
       loadersCost: number;
@@ -73,11 +103,21 @@ const addressTypeOptions: Array<SelectOption<AddressType>> = [
   { label: "Частный дом", value: "private" },
 ];
 
+const mainContactPhone = {
+  label: "Единый номер",
+  phone: "+7 (989) 500-00-38",
+  href: "tel:+79895000038",
+};
+
 const initialState: CalculatorState = {
   from: "rostov",
   to: "donetsk",
+  fromMode: "warehouse",
+  toMode: "pvz",
   weight: "",
-  volume: "",
+  length: "",
+  width: "",
+  height: "",
   addressType: "apartment",
   floor: "1",
   hasElevator: true,
@@ -109,13 +149,151 @@ function formatMoney(value: number) {
   return rubleFormatter.format(value).replace(",00", "");
 }
 
+function getDeliveryModeAvailability(city: CityKey, mode: DeliveryMode, chargeableWeight: number) {
+  if (mode === "courier") {
+    return { available: true, reason: "" };
+  }
+
+  const points = cityPickupPoints[city] ?? [];
+  const pvz = points.find((point) => point.type === "pvz");
+  const warehouse = points.find((point) => point.type === "warehouse");
+
+  if (mode === "warehouse") {
+    return warehouse
+      ? { available: true, reason: "" }
+      : { available: false, reason: `Склада в городе ${getCityLabel(city)} нет.` };
+  }
+
+  if (!pvz) {
+    return { available: false, reason: `ПВЗ в городе ${getCityLabel(city)} нет.` };
+  }
+  const threshold = pvz.thresholdKg ?? Number.POSITIVE_INFINITY;
+
+  if (chargeableWeight > threshold) {
+    return {
+      available: false,
+      reason: warehouse
+        ? `ПВЗ принимает до ${formatKg(threshold)}. Выберите склад или курьера.`
+        : `ПВЗ принимает до ${formatKg(threshold)}, склада в городе нет. Доступен курьер.`,
+    };
+  }
+
+  return { available: true, reason: "" };
+}
+
+function getDefaultDeliveryMode(city: CityKey, preferred: DeliveryMode | undefined, chargeableWeight: number) {
+  if (preferred && getDeliveryModeAvailability(city, preferred, chargeableWeight).available) {
+    return preferred;
+  }
+
+  if (getDeliveryModeAvailability(city, "pvz", chargeableWeight).available) {
+    return "pvz";
+  }
+
+  if (getDeliveryModeAvailability(city, "warehouse", chargeableWeight).available) {
+    return "warehouse";
+  }
+
+  return "courier";
+}
+
+function formatKg(value: number) {
+  return `${numberFormatter.format(value)} кг`;
+}
+
+function phoneHref(phone: string) {
+  return `tel:+${phone.replace(/\D/g, "")}`;
+}
+
+function getRoutePhoneOptions(from: CityKey, to: CityKey) {
+  const contacts = [mainContactPhone];
+
+  for (const city of [from, to]) {
+    for (const point of cityPickupPoints[city] ?? []) {
+      contacts.push({
+        label: `${getCityLabel(city)} · ${point.label}`,
+        phone: point.contact.startsWith("+") ? point.contact : `+${point.contact}`,
+        href: phoneHref(point.contact),
+      });
+    }
+  }
+
+  return contacts.filter(
+    (contact, index, list) => list.findIndex((candidate) => candidate.href === contact.href) === index,
+  );
+}
+
+function createDisplayOrderNumber() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const suffix = String(Math.floor(Math.random() * 90) + 10);
+
+  return `#${month}${day}-${suffix}`;
+}
+
+function resolveDeliveryLeg(city: CityKey, requestedMode: DeliveryMode, chargeableWeight: number): DeliveryLegResolution {
+  const actualMode = getDefaultDeliveryMode(city, requestedMode, chargeableWeight);
+
+  if (actualMode === "courier") {
+    return { kind: "courier", label: "Курьер" };
+  }
+
+  const points = cityPickupPoints[city] ?? [];
+  const pvz = points.find((point) => point.type === "pvz");
+  const warehouse = points.find((point) => point.type === "warehouse");
+
+  if (actualMode === "pvz" && pvz) {
+    const threshold = pvz.thresholdKg ?? Number.POSITIVE_INFINITY;
+
+    return { kind: "pickup", label: "ПВЗ", point: pvz, note: `ПВЗ принимает до ${formatKg(threshold)}.` };
+  }
+
+  if (actualMode === "warehouse" && warehouse) {
+    return { kind: "pickup", label: "Склад", point: warehouse, note: "В городе доступен склад." };
+  }
+
+  return { kind: "courier", label: "Курьер", note: "В городе нет ПВЗ/склада." };
+}
+
 export function DeliveryCalculatorPage() {
   const [state, setState] = useState<CalculatorState>(initialState);
+  const previewActualWeight = parsePositiveNumber(state.weight);
+  const previewLength = parsePositiveNumber(state.length);
+  const previewWidth = parsePositiveNumber(state.width);
+  const previewHeight = parsePositiveNumber(state.height);
+  const previewVolumeWeight =
+    previewLength && previewWidth && previewHeight ? (previewLength * previewWidth * previewHeight) / 5000 : 0;
+  const previewChargeableWeight = Math.max(previewActualWeight, previewVolumeWeight);
+  const previewFromLeg = resolveDeliveryLeg(state.from, state.fromMode, previewChargeableWeight);
+  const previewToLeg = resolveDeliveryLeg(state.to, state.toMode, previewChargeableWeight);
+  const hasCourierMode = previewFromLeg.kind === "courier" || previewToLeg.kind === "courier";
+
+  useEffect(() => {
+    setState((current) => {
+      const actualWeight = parsePositiveNumber(current.weight);
+      const length = parsePositiveNumber(current.length);
+      const width = parsePositiveNumber(current.width);
+      const height = parsePositiveNumber(current.height);
+      const volumeWeight = length && width && height ? (length * width * height) / 5000 : 0;
+      const chargeableWeight = Math.max(actualWeight, volumeWeight);
+      const fromMode = getDefaultDeliveryMode(current.from, current.fromMode, chargeableWeight);
+      const toMode = getDefaultDeliveryMode(current.to, current.toMode, chargeableWeight);
+
+      if (fromMode === current.fromMode && toMode === current.toMode) {
+        return current;
+      }
+
+      return { ...current, fromMode, toMode };
+    });
+  }, [state.from, state.to, state.weight, state.length, state.width, state.height]);
 
   const result = useMemo<CalculationResult>(() => {
     const actualWeight = parsePositiveNumber(state.weight);
-    const volume = parsePositiveNumber(state.volume);
-    const volumeWeight = volume * 200;
+    const length = parsePositiveNumber(state.length);
+    const width = parsePositiveNumber(state.width);
+    const height = parsePositiveNumber(state.height);
+    const volumeWeight = length && width && height ? (length * width * height) / 5000 : 0;
     const chargeableWeight = Math.max(actualWeight, volumeWeight);
     const coefficient = routeCoefficients[state.from][state.to];
     const floor = Math.max(1, Math.floor(parsePositiveNumber(state.floor) || 1));
@@ -125,11 +303,21 @@ export function DeliveryCalculatorPage() {
       return { status: "same-route" as const };
     }
 
+    if (state.from === "moscow" || state.to === "moscow") {
+      return {
+        status: "moscow-special" as const,
+        actualWeight,
+        volumeWeight,
+        chargeableWeight,
+        term: "Только грузы от 500 кг",
+      };
+    }
+
     if (!coefficient) {
       return { status: "no-route" as const };
     }
 
-    if (!actualWeight && !volume) {
+    if (!actualWeight && !volumeWeight) {
       return {
         status: "empty" as const,
         coefficient,
@@ -156,17 +344,21 @@ export function DeliveryCalculatorPage() {
 
     const courier = courierTariffs[band.category];
     const extraEligible = band.category !== "Малая" && band.category !== "Стандартная";
+    const fromLeg = resolveDeliveryLeg(state.from, state.fromMode, chargeableWeight);
+    const toLeg = resolveDeliveryLeg(state.to, state.toMode, chargeableWeight);
+    const courierLegs = Number(fromLeg.kind === "courier") + Number(toLeg.kind === "courier");
     const transportCost = Math.round(band.baseTariff * coefficient);
-    const courierCost = courier.fixed;
-    const loadersCost = extraEligible && state.needLoaders ? courier.loaders : 0;
+    const courierCost = courier.fixed * courierLegs;
+    const hasCourierService = courierLegs > 0;
+    const loadersCost = extraEligible && hasCourierService && state.needLoaders ? courier.loaders : 0;
     const elevatorCost =
-      extraEligible && state.addressType === "apartment" && state.hasElevator && floor >= 2 ? courier.elevatorFee : 0;
+      extraEligible && hasCourierService && state.addressType === "apartment" && state.hasElevator && floor >= 2 ? courier.elevatorFee : 0;
     const stairsCost =
-      extraEligible && state.addressType === "apartment" && !state.hasElevator && floor >= 2
+      extraEligible && hasCourierService && state.addressType === "apartment" && !state.hasElevator && floor >= 2
         ? (floor - 1) * courier.stairPerFloor
         : 0;
     const privateCarryCost =
-      state.addressType === "private" && carryDistance > 25 ? Math.ceil((carryDistance - 25) / 10) * 50 : 0;
+      hasCourierService && state.addressType === "private" && carryDistance > 25 ? Math.ceil((carryDistance - 25) / 10) * 50 : 0;
     const total = transportCost + courierCost + loadersCost + elevatorCost + stairsCost + privateCarryCost;
 
     return {
@@ -178,6 +370,9 @@ export function DeliveryCalculatorPage() {
       term: getRouteTerm(state.from, state.to),
       band,
       courier,
+      courierLegs,
+      fromLeg,
+      toLeg,
       transportCost,
       courierCost,
       loadersCost,
@@ -190,6 +385,31 @@ export function DeliveryCalculatorPage() {
 
   const setField = <K extends keyof CalculatorState>(key: K, value: CalculatorState[K]) => {
     setState((current) => ({ ...current, [key]: value }));
+  };
+
+  const setCityField = (key: "from" | "to", value: CityKey) => {
+    setState((current) => {
+      const next: CalculatorState = { ...current, [key]: value };
+      const oppositeKey = key === "from" ? "to" : "from";
+
+      if (value === "moscow") {
+        next[oppositeKey] = "donetsk";
+      } else if (next[oppositeKey] === "moscow" && value !== "donetsk") {
+        next[oppositeKey] = "donetsk";
+      }
+
+      const actualWeight = parsePositiveNumber(next.weight);
+      const length = parsePositiveNumber(next.length);
+      const width = parsePositiveNumber(next.width);
+      const height = parsePositiveNumber(next.height);
+      const volumeWeight = length && width && height ? (length * width * height) / 5000 : 0;
+      const chargeableWeight = Math.max(actualWeight, volumeWeight);
+
+      next.fromMode = getDefaultDeliveryMode(next.from, next.fromMode, chargeableWeight);
+      next.toMode = getDefaultDeliveryMode(next.to, next.toMode, chargeableWeight);
+
+      return next;
+    });
   };
 
   return (
@@ -234,11 +454,23 @@ export function DeliveryCalculatorPage() {
             >
               <div className="grid gap-4">
                 <FieldShell icon={<PinIcon />} label="Откуда">
-                  <ModernSelect options={cityOptions} value={state.from} onChange={(value) => setField("from", value)} />
+                  <ModernSelect options={cityOptions} value={state.from} onChange={(value) => setCityField("from", value)} />
+                  <DeliveryModeSelector
+                    chargeableWeight={previewChargeableWeight}
+                    city={state.from}
+                    value={state.fromMode}
+                    onChange={(value) => setField("fromMode", value)}
+                  />
                 </FieldShell>
 
                 <FieldShell icon={<PinIcon />} label="Куда">
-                  <ModernSelect options={cityOptions} value={state.to} onChange={(value) => setField("to", value)} />
+                  <ModernSelect options={cityOptions} value={state.to} onChange={(value) => setCityField("to", value)} />
+                  <DeliveryModeSelector
+                    chargeableWeight={previewChargeableWeight}
+                    city={state.to}
+                    value={state.toMode}
+                    onChange={(value) => setField("toMode", value)}
+                  />
                 </FieldShell>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -253,69 +485,95 @@ export function DeliveryCalculatorPage() {
                     />
                   </FieldShell>
 
-                  <FieldShell icon={<VolumeIcon />} label="Объём, м³">
+                  <FieldShell icon={<VolumeIcon />} label="Длина, см">
                     <input
-                      aria-label="Объём, м³"
-                      placeholder="Например, 1.8"
+                      aria-label="Длина, см"
+                      placeholder="Например, 60"
                       inputMode="decimal"
-                      value={state.volume}
+                      value={state.length}
                       className={fieldClassName}
-                      onChange={(event) => setField("volume", event.target.value)}
+                      onChange={(event) => setField("length", event.target.value)}
+                    />
+                  </FieldShell>
+
+                  <FieldShell icon={<VolumeIcon />} label="Ширина, см">
+                    <input
+                      aria-label="Ширина, см"
+                      placeholder="Например, 40"
+                      inputMode="decimal"
+                      value={state.width}
+                      className={fieldClassName}
+                      onChange={(event) => setField("width", event.target.value)}
+                    />
+                  </FieldShell>
+
+                  <FieldShell icon={<VolumeIcon />} label="Высота, см">
+                    <input
+                      aria-label="Высота, см"
+                      placeholder="Например, 50"
+                      inputMode="decimal"
+                      value={state.height}
+                      className={fieldClassName}
+                      onChange={(event) => setField("height", event.target.value)}
                     />
                   </FieldShell>
                 </div>
 
-                <FieldShell icon={<HomeIcon />} label="Адрес получателя">
-                  <ModernSelect
-                    options={addressTypeOptions}
-                    value={state.addressType}
-                    onChange={(value) => setField("addressType", value)}
-                  />
-                </FieldShell>
-
-                {state.addressType === "apartment" ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FieldShell icon={<StairsIcon />} label="Этаж">
-                      <input
-                        aria-label="Этаж"
-                        placeholder="Например, 5"
-                        inputMode="numeric"
-                        value={state.floor}
-                        className={fieldClassName}
-                        onChange={(event) => setField("floor", event.target.value)}
+                {hasCourierMode ? (
+                  <>
+                    <FieldShell icon={<HomeIcon />} label="Адрес для курьера">
+                      <ModernSelect
+                        options={addressTypeOptions}
+                        value={state.addressType}
+                        onChange={(value) => setField("addressType", value)}
                       />
                     </FieldShell>
 
-                    <ToggleField
-                      checked={state.hasElevator}
-                      icon={<LiftIcon />}
-                      label="Лифт"
-                      offText="Нет лифта"
-                      onText="Есть лифт"
-                      onChange={(value) => setField("hasElevator", value)}
-                    />
-                  </div>
-                ) : (
-                  <FieldShell icon={<RouteIcon />} label="Занос от парковки, м">
-                    <input
-                      aria-label="Занос от парковки, м"
-                      placeholder="Например, 35"
-                      inputMode="decimal"
-                      value={state.privateCarryDistance}
-                      className={fieldClassName}
-                      onChange={(event) => setField("privateCarryDistance", event.target.value)}
-                    />
-                  </FieldShell>
-                )}
+                    {state.addressType === "apartment" ? (
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <FieldShell icon={<StairsIcon />} label="Этаж">
+                          <input
+                            aria-label="Этаж"
+                            placeholder="Например, 5"
+                            inputMode="numeric"
+                            value={state.floor}
+                            className={fieldClassName}
+                            onChange={(event) => setField("floor", event.target.value)}
+                          />
+                        </FieldShell>
 
-                <ToggleField
-                  checked={state.needLoaders}
-                  icon={<CargoIcon />}
-                  label="Грузчики"
-                  offText="Не нужны"
-                  onText="Нужны"
-                  onChange={(value) => setField("needLoaders", value)}
-                />
+                        <ToggleField
+                          checked={state.hasElevator}
+                          icon={<LiftIcon />}
+                          label="Лифт"
+                          offText="Нет лифта"
+                          onText="Есть лифт"
+                          onChange={(value) => setField("hasElevator", value)}
+                        />
+                      </div>
+                    ) : (
+                      <FieldShell icon={<RouteIcon />} label="Занос от парковки, м">
+                      <input
+                        aria-label="Занос от парковки, м"
+                        placeholder="Например, 35"
+                        inputMode="decimal"
+                        value={state.privateCarryDistance}
+                        className={fieldClassName}
+                        onChange={(event) => setField("privateCarryDistance", event.target.value)}
+                      />
+                    </FieldShell>
+                    )}
+
+                    <ToggleField
+                      checked={state.needLoaders}
+                      icon={<CargoIcon />}
+                      label="Грузчики"
+                      offText="Не нужны"
+                      onText="Нужны"
+                      onChange={(value) => setField("needLoaders", value)}
+                    />
+                  </>
+                ) : null}
 
                 <button
                   type="submit"
@@ -327,7 +585,13 @@ export function DeliveryCalculatorPage() {
             </form>
           </div>
 
-          <ResultPanel from={state.from} result={result} to={state.to} />
+          <ResultPanel
+            from={state.from}
+            fromLeg={result.status === "ready" ? result.fromLeg : previewFromLeg}
+            result={result}
+            to={state.to}
+            toLeg={result.status === "ready" ? result.toLeg : previewToLeg}
+          />
         </div>
       </section>
     </main>
@@ -336,13 +600,52 @@ export function DeliveryCalculatorPage() {
 
 function ResultPanel({
   from,
+  fromLeg,
   to,
+  toLeg,
   result,
 }: {
   from: CityKey;
+  fromLeg: DeliveryLegResolution;
   to: CityKey;
+  toLeg: DeliveryLegResolution;
   result: CalculationResult;
 }) {
+  const [activeDialog, setActiveDialog] = useState<CalculatorDialog>(null);
+  const routePhones = useMemo(() => getRoutePhoneOptions(from, to), [from, to]);
+  const specialDetails =
+    result.status === "special"
+      ? {
+          title: `Расчётный вес ${numberFormatter.format(result.chargeableWeight)} кг`,
+          text: "Для отправлений от 500 кг в тарифной таблице указан спецтариф. Стоимость и условия нужно согласовать с менеджером.",
+          badge: "Спецтариф",
+          chargeableWeight: result.chargeableWeight,
+        }
+      : result.status === "moscow-special"
+        ? {
+            title: "Направление Москва ↔ Донецк",
+            text: "Для Москвы стандартный расчёт не применяется. Доступно согласование заявки и консультация по телефону.",
+            badge: "Только по заявке",
+            chargeableWeight: result.chargeableWeight,
+          }
+        : null;
+
+  if (activeDialog === "order" && result.status === "ready") {
+    return (
+      <aside className="relative z-10 rounded-[28px] border border-white/58 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-5 text-[#173862] shadow-[0_28px_80px_rgba(28,78,160,0.22)] backdrop-blur-[18px] sm:p-6 lg:sticky lg:top-8 lg:mt-[132px]">
+        <OrderRequestDialog from={from} onClose={() => setActiveDialog(null)} result={result} to={to} />
+      </aside>
+    );
+  }
+
+  if (activeDialog === "request" && specialDetails) {
+    return (
+      <aside className="relative z-10 rounded-[28px] border border-white/58 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-5 text-[#173862] shadow-[0_28px_80px_rgba(28,78,160,0.22)] backdrop-blur-[18px] sm:p-6 lg:sticky lg:top-8 lg:mt-[132px]">
+        <RequestDialog from={from} onClose={() => setActiveDialog(null)} result={result} to={to} />
+      </aside>
+    );
+  }
+
   return (
     <aside className="relative z-10 rounded-[28px] border border-white/58 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-5 text-[#173862] shadow-[0_28px_80px_rgba(28,78,160,0.22)] backdrop-blur-[18px] sm:p-6 lg:sticky lg:top-8 lg:mt-[132px]">
       <div className="flex items-start justify-between gap-4">
@@ -367,6 +670,10 @@ function ResultPanel({
             {result.term}
           </div>
         ) : null}
+        <div className="mt-4 grid gap-2 text-sm font-bold text-[#587295]">
+          <SelectedDeliveryLine label="Откуда" leg={fromLeg} />
+          <SelectedDeliveryLine label="Куда" leg={toLeg} />
+        </div>
       </div>
 
       {result.status === "ready" ? (
@@ -380,24 +687,618 @@ function ResultPanel({
 
           <div className="mt-5 space-y-3">
             <PriceLine label="Перевозка" value={result.transportCost} />
-            <PriceLine label={`Курьерская доставка ${result.courier.destination}`} value={result.courierCost} />
+            <PriceLine
+              label={`Курьер ${result.courier.destination}${result.courierLegs > 1 ? ` × ${result.courierLegs}` : ""}`}
+              value={result.courierCost}
+            />
             <PriceLine label="Грузчики" value={result.loadersCost} />
             <PriceLine label="Провоз в лифте" value={result.elevatorCost} />
             <PriceLine label="Подъём пешком" value={result.stairsCost} />
             <PriceLine label="Занос в частном доме" value={result.privateCarryCost} />
           </div>
+          <button
+            type="button"
+            className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(180deg,#4f8fe8_0%,#356fcb_100%)] px-5 text-sm font-black text-white shadow-[0_16px_30px_rgba(46,90,175,0.24)] transition hover:-translate-y-0.5"
+            onClick={() => setActiveDialog("order")}
+          >
+            <FormIcon />
+            Оформить заказ
+          </button>
         </>
-      ) : result.status !== "special" ? (
+      ) : result.status === "empty" || result.status === "same-route" || result.status === "no-route" ? (
         <ResultMessage status={result.status} />
       ) : null}
 
-      {result.status === "special" ? (
-        <div className="mt-5 rounded-2xl border border-[#cfe0f7] bg-white/70 p-4 text-sm font-bold leading-6 text-[#173862]">
-          Расчётный вес {numberFormatter.format(result.chargeableWeight)} кг. Для отправлений от 500 кг в тарифной
-          таблице указан спецтариф, стоимость нужно согласовать заявкой.
-        </div>
+      {specialDetails ? (
+        <HeavyCargoActions
+          details={specialDetails}
+          from={from}
+          onOpenPhones={() => setActiveDialog("phones")}
+          onOpenRequest={() => setActiveDialog("request")}
+          result={result}
+          to={to}
+        />
       ) : null}
+
+      {activeDialog === "phones" ? <PhonesDialog onClose={() => setActiveDialog(null)} phones={routePhones} /> : null}
     </aside>
+  );
+}
+
+function HeavyCargoActions({
+  details,
+  from,
+  onOpenPhones,
+  onOpenRequest,
+  result,
+  to,
+}: {
+  details: { title: string; text: string; badge: string; chargeableWeight: number };
+  from: CityKey;
+  onOpenPhones: () => void;
+  onOpenRequest: () => void;
+  result: CalculationResult;
+  to: CityKey;
+}) {
+  const term = "term" in result ? result.term : "Срок уточняется";
+
+  return (
+    <div className="mt-5 overflow-hidden rounded-[24px] border border-[#bcd3f4] bg-[linear-gradient(180deg,#ffffff_0%,#eef6ff_100%)] shadow-[0_18px_42px_rgba(35,83,164,0.14)]">
+      <div className="border-b border-[#d7e6f8] p-4">
+        <div className="inline-flex rounded-full bg-[#e8f2ff] px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-[#356fcb]">
+          {details.badge}
+        </div>
+        <h3 className="mt-3 text-xl font-black leading-tight text-[#173862]">{details.title}</h3>
+        <p className="mt-2 text-sm font-bold leading-6 text-[#587295]">{details.text}</p>
+      </div>
+
+      <div className="grid gap-3 p-4 text-sm font-bold text-[#587295]">
+        <div>
+          Маршрут:{" "}
+          <span className="text-[#173862]">
+            {getCityLabel(from)} → {getCityLabel(to)}
+          </span>
+        </div>
+        <div>
+          Срок: <span className="text-[#173862]">{term}</span>
+        </div>
+        {details.chargeableWeight ? (
+          <div>
+            Вес для заявки: <span className="text-[#173862]">{formatKg(details.chargeableWeight)}</span>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="grid gap-3 border-t border-[#d7e6f8] p-4 sm:grid-cols-2">
+        <button
+          type="button"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(180deg,#4f8fe8_0%,#356fcb_100%)] px-4 text-sm font-black text-white shadow-[0_16px_30px_rgba(46,90,175,0.24)] transition hover:-translate-y-0.5"
+          onClick={onOpenRequest}
+        >
+          <FormIcon />
+          Заполнить заявку
+        </button>
+        <button
+          type="button"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#c7daf6] bg-white/74 px-4 text-sm font-black text-[#356fcb] transition hover:bg-white"
+          onClick={onOpenPhones}
+        >
+          <PhoneIcon />
+          Позвонить нам
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function OrderRequestDialog({
+  from,
+  onClose,
+  result,
+  to,
+}: {
+  from: CityKey;
+  onClose: () => void;
+  result: Extract<CalculationResult, { status: "ready" }>;
+  to: CityKey;
+}) {
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [orderNumber] = useState(createDisplayOrderNumber);
+  const hasCourier = result.courierLegs > 0;
+  const deliveryType = hasCourier ? `Курьер ${result.courier.destination}` : `${result.toLeg.label}`;
+
+  return (
+    <InlinePanelShell title="Оформление заказа" onClose={onClose}>
+      {isSubmitted ? (
+        <OrderSuccess
+          message={
+            hasCourier
+              ? "Курьер свяжется с отправителем для согласования времени забора груза."
+              : `${result.toLeg.label} получения: ${result.toLeg.kind === "pickup" ? result.toLeg.point.address : getCityLabel(to)}`
+          }
+          number={orderNumber}
+          title="Заказ оформлен"
+          total={formatMoney(result.total)}
+        />
+      ) : (
+        <form
+          className="grid gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setIsSubmitted(true);
+          }}
+        >
+          <div className="rounded-2xl border border-[#cfe0f7] bg-white/72 p-4 text-sm font-bold leading-6 text-[#587295]">
+            <span className="text-[#173862]">
+              {getCityLabel(from)} → {getCityLabel(to)}
+            </span>
+            <span className="block">
+              {deliveryType}, сумма {formatMoney(result.total)}
+            </span>
+          </div>
+
+          <DialogInput label="Контактное лицо" placeholder="Имя и фамилия" required />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <DialogInput label="Телефон" placeholder="+7 999 000-00-00" inputMode="tel" required />
+            <DialogInput label="Электронная почта" placeholder="mail@example.ru" type="email" />
+          </div>
+
+          {hasCourier ? (
+            <>
+              <DialogInput label="Адрес отправителя" placeholder="Город, улица, дом" required />
+              <label className="block">
+                <span className="text-xs font-black uppercase tracking-[0.16em] text-[#4d78b8]">Комментарий</span>
+                <textarea
+                  className="mt-2 min-h-24 w-full resize-none rounded-2xl border border-[#cfe0f7] bg-white/82 px-4 py-3 text-sm font-bold text-[#173862] outline-none placeholder:text-[#8aa2c8] focus:border-[#7aa5e6]"
+                  placeholder="Удобное время, подъезд, ориентиры, дополнительные детали"
+                />
+              </label>
+            </>
+          ) : null}
+
+          <button
+            type="submit"
+            className="mt-2 inline-flex min-h-12 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,#4f8fe8_0%,#356fcb_100%)] px-5 text-sm font-black text-white shadow-[0_16px_30px_rgba(46,90,175,0.24)]"
+          >
+            Подтвердить заказ
+          </button>
+        </form>
+      )}
+    </InlinePanelShell>
+  );
+}
+
+function RequestDialog({
+  from,
+  onClose,
+  result,
+  to,
+}: {
+  from: CityKey;
+  onClose: () => void;
+  result: CalculationResult;
+  to: CityKey;
+}) {
+  const routeWeight = "chargeableWeight" in result && result.chargeableWeight ? numberFormatter.format(result.chargeableWeight) : "";
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [requestNumber] = useState(createDisplayOrderNumber);
+  const [transportType, setTransportType] = useState("");
+  const [transportError, setTransportError] = useState("");
+
+  return (
+    <InlinePanelShell title="Заявка на прямую машину" onClose={onClose}>
+      {isSubmitted ? (
+        <OrderSuccess
+          message="Экспедитор подбирает транспорт под ваш груз. Мы свяжемся с вами в течение 30 минут."
+          number={requestNumber}
+          showTrackingLine={false}
+          title="Заявка отправлена"
+        />
+      ) : (
+        <form
+          className="grid gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!transportType) {
+              setTransportError("Выберите тип транспорта");
+              return;
+            }
+            setIsSubmitted(true);
+          }}
+        >
+          <div className="rounded-2xl border border-[#cfe0f7] bg-white/72 p-4 text-sm font-bold leading-6 text-[#587295]">
+            <span className="text-[#173862]">
+              {getCityLabel(from)} → {getCityLabel(to)}
+            </span>
+            <span className="block">Расчётный вес: {routeWeight ? `${routeWeight} кг` : "от 500 кг"}</span>
+          </div>
+
+          <DialogInput label="Наименование груза" placeholder="Например, оборудование" required />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <DialogInput label="Вес, кг" defaultValue={routeWeight} inputMode="decimal" required />
+            <DialogInput label="Объём, м³" placeholder="Например, 8" inputMode="decimal" required />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <DialogInput label="Количество мест" placeholder="Например, 12" inputMode="numeric" required />
+            <TransportSelect
+              error={transportError}
+              value={transportType}
+              onChange={(value) => {
+                setTransportType(value);
+                setTransportError("");
+              }}
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <DialogInput label="Адрес загрузки" placeholder="Город, улица, дом" required />
+            <DialogInput label="Адрес выгрузки" placeholder="Город, улица, дом" required />
+          </div>
+
+          <div className="rounded-2xl border border-[#cfe0f7] bg-white/68 p-4">
+            <span className="text-xs font-black uppercase tracking-[0.16em] text-[#4d78b8]">Особые свойства</span>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {["Опасный", "Хрупкий", "Скоропортящийся", "Негабарит"].map((option) => (
+                <label key={option} className="flex items-center gap-2 text-sm font-bold text-[#173862]">
+                  <input type="checkbox" className="h-4 w-4 accent-[#3f74cb]" />
+                  {option}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <DialogInput label="Контактное лицо" placeholder="Имя и фамилия" required />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <DialogInput label="Телефон" placeholder="+7 999 000-00-00" inputMode="tel" required />
+            <DialogInput label="Электронная почта" placeholder="mail@example.ru" type="email" required />
+          </div>
+          <DialogInput label="Карточка предприятия" type="file" />
+          <button
+            type="submit"
+            className="mt-2 inline-flex min-h-12 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,#4f8fe8_0%,#356fcb_100%)] px-5 text-sm font-black text-white shadow-[0_16px_30px_rgba(46,90,175,0.24)]"
+          >
+            Отправить заявку
+          </button>
+        </form>
+      )}
+    </InlinePanelShell>
+  );
+}
+
+function OrderSuccess({
+  message,
+  number,
+  showTrackingLine = true,
+  title,
+  total,
+}: {
+  message: string;
+  number: string;
+  showTrackingLine?: boolean;
+  title: string;
+  total?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#cfe0f7] bg-[#f4f9ff] p-5">
+      <p className="text-lg font-black text-[#173862]">{title}</p>
+      <div className="mt-3 grid gap-2 text-sm font-bold leading-6 text-[#587295]">
+        <span>
+          Номер заявки: <span className="text-[#173862]">{number}</span>
+        </span>
+        {total ? (
+          <span>
+            Сумма: <span className="text-[#173862]">{total}</span>
+          </span>
+        ) : null}
+        <span>{message}</span>
+        {showTrackingLine ? <span>Трек-номер придёт на телефон и email после передачи груза в доставку.</span> : null}
+        <span>
+          По вопросам: <span className="text-[#173862]">{mainContactPhone.phone}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function PhonesDialog({
+  onClose,
+  phones,
+}: {
+  onClose: () => void;
+  phones: Array<{ label: string; phone: string; href: string }>;
+}) {
+  return (
+    <ModalShell title="Позвонить нам" onClose={onClose}>
+      <div className="grid gap-3">
+        {phones.map((contact) => (
+          <a
+            key={contact.href}
+            href={contact.href}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-[#cfe0f7] bg-white/82 px-4 py-3 text-left transition hover:border-[#9ec0f0] hover:bg-white"
+          >
+            <span>
+              <span className="block text-sm font-black text-[#173862]">{contact.label}</span>
+              <span className="mt-1 block text-sm font-bold text-[#587295]">{contact.phone}</span>
+            </span>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#e8f2ff] text-[#356fcb]">
+              <PhoneIcon />
+            </span>
+          </a>
+        ))}
+      </div>
+    </ModalShell>
+  );
+}
+
+function InlinePanelShell({
+  children,
+  onClose,
+  title,
+}: {
+  children: ReactNode;
+  onClose: () => void;
+  title: string;
+}) {
+  return (
+    <div>
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#4d78b8]">Сарма Экспресс</p>
+          <h2 className="mt-1 text-2xl font-black text-[#173862]">{title}</h2>
+        </div>
+        <button
+          type="button"
+          className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[#d7e5fb] bg-white/78 px-4 text-xs font-black uppercase tracking-[0.12em] text-[#3f74cb] transition hover:bg-white"
+          onClick={onClose}
+        >
+          Расчёт
+        </button>
+      </div>
+      <div className="rounded-[24px] border border-[#d7e6f8] bg-white/58 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] sm:p-5">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ModalShell({
+  children,
+  onClose,
+  title,
+}: {
+  children: ReactNode;
+  onClose: () => void;
+  title: string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#08214d]/48 p-4 backdrop-blur-sm">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="max-h-[calc(100vh-32px)] w-full max-w-[560px] overflow-y-auto rounded-[28px] border border-white/72 bg-[linear-gradient(180deg,#ffffff_0%,#edf6ff_100%)] p-5 shadow-[0_30px_90px_rgba(8,33,77,0.34)] sm:p-6"
+      >
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#4d78b8]">Сарма Экспресс</p>
+            <h3 className="mt-1 text-2xl font-black text-[#173862]">{title}</h3>
+          </div>
+          <button
+            type="button"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#d7e5fb] bg-white/78 text-[#3f74cb] transition hover:bg-white"
+            aria-label="Закрыть"
+            onClick={onClose}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function DialogInput({
+  defaultValue,
+  inputMode,
+  label,
+  placeholder,
+  required,
+  type = "text",
+}: {
+  defaultValue?: string;
+  inputMode?: "decimal" | "numeric" | "tel";
+  label: string;
+  placeholder?: string;
+  required?: boolean;
+  type?: "email" | "file" | "text";
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs font-black uppercase tracking-[0.16em] text-[#4d78b8]">{label}</span>
+      <input
+        className="mt-2 min-h-12 w-full rounded-2xl border border-[#cfe0f7] bg-white/82 px-4 text-sm font-bold text-[#173862] outline-none placeholder:text-[#8aa2c8] focus:border-[#7aa5e6]"
+        defaultValue={defaultValue}
+        inputMode={inputMode}
+        placeholder={placeholder}
+        required={required}
+        type={type}
+      />
+    </label>
+  );
+}
+
+function TransportSelect({
+  error,
+  onChange,
+  value,
+}: {
+  error?: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const options = ["Тент", "Рефрижератор", "Изотерм", "Газель", "Спецтехника"];
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isOpen]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <span className="text-xs font-black uppercase tracking-[0.16em] text-[#4d78b8]">Тип транспорта</span>
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        className={`mt-2 flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl border bg-white/82 px-4 text-left text-sm font-black outline-none transition ${
+          error ? "border-[#e38b8b] text-[#173862]" : isOpen ? "border-[#7aa5e6] text-[#173862] shadow-[0_14px_26px_rgba(47,96,184,0.14)]" : "border-[#cfe0f7] text-[#173862]"
+        }`}
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        <span className={value ? "" : "text-[#8aa2c8]"}>{value || "Выберите"}</span>
+        <span className={`text-[#356fcb] transition ${isOpen ? "rotate-180" : ""}`}>
+          <ChevronDownIcon />
+        </span>
+      </button>
+
+      <div
+        className={`absolute left-0 right-0 top-[calc(100%+8px)] z-40 origin-top overflow-hidden rounded-[20px] border border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(237,246,255,0.98)_100%)] p-2 shadow-[0_24px_48px_rgba(24,66,140,0.2)] backdrop-blur-xl transition duration-150 ${
+          isOpen ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-2 opacity-0"
+        }`}
+      >
+        <div className="grid gap-1" role="listbox">
+          {options.map((option) => {
+            const selected = option === value;
+
+            return (
+              <button
+                key={option}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                className={`flex min-h-10 w-full items-center justify-between gap-3 rounded-[14px] px-3 text-left text-sm font-black transition ${
+                  selected
+                    ? "bg-[linear-gradient(135deg,#4f8fe8_0%,#356fcb_100%)] text-white shadow-[0_12px_20px_rgba(46,90,175,0.2)]"
+                    : "text-[#173862] hover:bg-white hover:shadow-[0_10px_18px_rgba(34,78,154,0.1)]"
+                }`}
+                onClick={() => {
+                  onChange(option);
+                  setIsOpen(false);
+                }}
+              >
+                <span>{option}</span>
+                <span
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${
+                    selected ? "border-white/35 bg-white/18 text-white" : "border-[#d7e4f7] bg-white/76 text-[#7e95ba]"
+                  }`}
+                >
+                  {selected ? <CheckIcon /> : <DotIcon />}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {error ? <p className="mt-2 text-xs font-bold text-[#c65d5d]">{error}</p> : null}
+    </div>
+  );
+}
+
+function DeliveryModeSelector({
+  chargeableWeight,
+  city,
+  value,
+  onChange,
+}: {
+  chargeableWeight: number;
+  city: CityKey;
+  value: DeliveryMode;
+  onChange: (value: DeliveryMode) => void;
+}) {
+  const options: Array<{ value: DeliveryMode; label: string; available: boolean; reason: string }> = [
+    { value: "pvz", label: "ПВЗ", ...getDeliveryModeAvailability(city, "pvz", chargeableWeight) },
+    { value: "warehouse", label: "Склад", ...getDeliveryModeAvailability(city, "warehouse", chargeableWeight) },
+    { value: "courier", label: "Курьер", ...getDeliveryModeAvailability(city, "courier", chargeableWeight) },
+  ];
+  const unavailableReasons = options.filter((option) => !option.available).map((option) => option.reason);
+
+  return (
+    <div className="mt-3">
+      <div className="grid grid-cols-3 gap-2">
+        {options.map((option) => {
+          const isSelected = value === option.value && option.available;
+
+          return (
+            <button
+              key={option.value}
+              type="button"
+              disabled={!option.available}
+              className={`min-h-10 rounded-2xl border px-3 text-sm font-black transition ${
+                isSelected
+                  ? "border-[#3f74cb] bg-[#3f74cb] text-white shadow-[0_12px_22px_rgba(46,90,175,0.22)]"
+                  : option.available
+                    ? "border-[#cfe0f7] bg-white/68 text-[#356fcb] hover:bg-white"
+                    : "cursor-not-allowed border-[#d9e2ef] bg-[#edf2f8]/70 text-[#9aacc7]"
+              }`}
+              onClick={() => onChange(option.value)}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+      {unavailableReasons.length ? (
+        <p className="mt-2 text-xs font-bold leading-5 text-[#7891b5]">{unavailableReasons.join(" ")}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function SelectedDeliveryLine({
+  label,
+  leg,
+}: {
+  label: string;
+  leg: DeliveryLegResolution;
+}) {
+  const modeLabel = leg.label;
+
+  return (
+    <div>
+      {label}: <span className="text-[#173862]">{modeLabel}</span>
+      {leg.kind === "pickup" ? (
+        <>
+          <span className="block text-xs font-semibold leading-5 text-[#7891b5]">{leg.point.address}</span>
+          {leg.note ? <span className="block text-xs font-semibold leading-5 text-[#7891b5]">{leg.note}</span> : null}
+        </>
+      ) : leg.note ? (
+        <span className="block text-xs font-semibold leading-5 text-[#7891b5]">{leg.note}</span>
+      ) : null}
+    </div>
   );
 }
 
@@ -407,7 +1308,7 @@ function ResultMessage({ status }: { status: "empty" | "same-route" | "no-route"
       ? "Выберите разные города отправления и назначения."
       : status === "no-route"
         ? "Для выбранного направления нет коэффициента в тарифной матрице."
-        : "Введите вес или объём, чтобы увидеть расчёт.";
+        : "Введите вес или габариты, чтобы увидеть расчёт.";
 
   return <div className="mt-5 rounded-2xl bg-white/70 p-4 text-sm font-bold leading-6 text-[#587295]">{message}</div>;
 }
@@ -689,6 +1590,34 @@ function ReceiptIcon() {
       <path d="M9 8h6" />
       <path d="M9 12h6" />
       <path d="M9 16h4" />
+    </svg>
+  );
+}
+
+function FormIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" aria-hidden="true">
+      <path d="M7 3h7l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+      <path d="M14 3v5h5" />
+      <path d="M8.5 12h7" />
+      <path d="M8.5 16h5" />
+    </svg>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" aria-hidden="true">
+      <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.7 19.7 0 0 1-8.6-3.1 19.2 19.2 0 0 1-5.9-5.9A19.7 19.7 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.7.6 2.5a2 2 0 0 1-.5 2.1L8 9.5a16 16 0 0 0 6.5 6.5l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.6.5 2.5.6A2 2 0 0 1 22 16.9Z" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" aria-hidden="true">
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
     </svg>
   );
 }

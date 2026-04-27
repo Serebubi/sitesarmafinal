@@ -21,13 +21,13 @@ const serviceCards = [
     title: "LTL - СБОРНЫЕ ГРУЗЫ",
     imageSrc: "/services/ltl-cargo.png",
     imageAlt: "Сборные грузы",
-    href: "/superbox?flow=pickup_paid",
+    href: "/ltl",
   },
   {
     title: "FTL - ПОЛНАЯ ЗАГРУЗКА",
     imageSrc: "/services/ftl-full-load.png",
     imageAlt: "Полная загрузка",
-    href: "/superbox?flow=pickup_paid",
+    href: "/ftl",
   },
   {
     title: "ДОСТАВКА ИЗ ИНТЕРНЕТ-МАГАЗИНОВ",

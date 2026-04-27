@@ -17,6 +17,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
+import { createPortal } from "react-dom";
 
 import {
   bulkyAttachmentLimit,
@@ -388,7 +389,7 @@ function PickupPointSelect({
   id: string;
   value: string;
   onChange: (value: string) => void;
-  options: Array<{ value: string; label: string }>;
+  options: Array<{ value: string; label: string; description?: string }>;
   placeholder: string;
   variant?: "default" | "sarma";
 }) {
@@ -498,7 +499,7 @@ function PickupPointSelect({
                     onChange(option.value);
                     setOpen(false);
                   }}
-                  className={`flex w-full items-center justify-between rounded-[20px] px-4 py-3 text-left text-[15px] transition ${
+                  className={`flex w-full items-center justify-between gap-4 rounded-[20px] px-4 py-3 text-left text-[15px] transition ${
                     sarma
                       ? active
                         ? "bg-[linear-gradient(180deg,#4c8ce6_0%,#3b74cf_100%)] font-semibold text-white shadow-[0_12px_24px_rgba(43,92,180,0.18)]"
@@ -508,7 +509,14 @@ function PickupPointSelect({
                         : "text-[color:var(--foreground)] hover:bg-[color:var(--surface-soft)]"
                   }`}
                 >
-                  <span>{option.label}</span>
+                  <span className="min-w-0">
+                    <span className="block font-semibold leading-6">{option.label}</span>
+                    {option.description ? (
+                      <span className={`mt-1 block text-sm font-medium leading-5 ${active ? "text-white/82" : sarma ? "text-[#6c83aa]" : "text-[color:var(--muted)]"}`}>
+                        {option.description}
+                      </span>
+                    ) : null}
+                  </span>
                   {active ? (
                     <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white ${
                       sarma
@@ -751,6 +759,48 @@ function PrimaryButton({ className, children, ...props }: ButtonHTMLAttributes<H
     >
       {children}
     </button>
+  );
+}
+
+function FloatingContinueBar({
+  selectedLabel,
+  onContinue,
+}: {
+  selectedLabel: string;
+  onContinue: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] px-4 pb-4 sm:px-6 sm:pb-5"
+      style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+    >
+      <div className="pointer-events-auto mx-auto max-w-[1020px] rounded-[30px] border border-white/80 bg-white/94 p-4 shadow-[0_24px_60px_rgba(39,77,146,0.22)] backdrop-blur-xl sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#6d88b2]">Выбранный сценарий</p>
+            <p className="mt-2 truncate text-2xl font-extrabold leading-tight text-[#13345f]">{selectedLabel}</p>
+          </div>
+
+          <PrimaryButton
+            onClick={onContinue}
+            className="min-h-14 w-full rounded-[22px] bg-[linear-gradient(180deg,#4c8ce6_0%,#3b74cf_100%)] text-base font-extrabold shadow-[0_20px_36px_rgba(43,92,180,0.24)] sm:w-[350px]"
+          >
+            Продолжить
+          </PrimaryButton>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -1154,21 +1204,6 @@ export function SuperboxApp() {
         </p>
       </NoticeBox>
     ),
-    wildberries_premium: (
-      <NoticeBox>
-        <p>Доставка любого товара свыше 20 000 ₽ рассчитывается по физическому весу, а не по ценнику в корзине.</p>
-        <p className="mt-1">
-          <button
-            type="button"
-            onClick={() => openFlow("tariffs")}
-            className="font-semibold underline underline-offset-2 hover:text-amber-700"
-          >
-            📋 Ссылка на тарифы →
-          </button>
-        </p>
-        <p className="mt-1">📍 Адрес: г. Ростов-на-Дону, ул. Платона Кляты, 23.</p>
-      </NoticeBox>
-    ),
     detmir: (
       <NoticeBox>
         <p>📍 Адрес: г. Ростов-на-Дону, ул. Таганрогская, 114И, ТЦ «Джанфида».</p>
@@ -1225,22 +1260,6 @@ export function SuperboxApp() {
         </p>
       </NoticeBox>
     ),
-    wildberries_opt: (
-      <NoticeBox>
-        <p>Единый тариф на физический вес груза при заказе любых товаров общей стоимостью от 50 000 ₽.</p>
-        <p className="mt-1">
-          <button
-            type="button"
-            onClick={() => openFlow("tariffs")}
-            className="font-semibold underline underline-offset-2 hover:text-amber-700"
-          >
-            📋 Ссылка на тарифы →
-          </button>
-        </p>
-        <p className="mt-1">📍 Адрес: г. Ростов-на-Дону, ул. Платона Кляты, 23.</p>
-        <p className="mt-1">Если хотите отказаться от товаров, напишите в &quot;Прием заказов&quot;, пришлите скриншоты товаров, от которых отказ и номер заказа.</p>
-      </NoticeBox>
-    ),
   };
 
   const continuePickupSelection = () => {
@@ -1257,9 +1276,10 @@ export function SuperboxApp() {
     const isDetmirPaid = activeFlow === "pickup_paid" && activePickup.marketplace === "detmir";
     const isGoldapplePaid = activeFlow === "pickup_paid" && activePickup.marketplace === "goldapple";
     const isLetualPaid = activeFlow === "pickup_paid" && activePickup.marketplace === "letual";
-    const isWildberriesPremiumPaid = activeFlow === "pickup_paid" && activePickup.marketplace === "wildberries_premium";
     const isCourierPaid = activeFlow === "pickup_paid" && activePickup.marketplace === "courier";
     const isBulkyPaid = activeFlow === "pickup_paid" && activePickup.marketplace === "bulky";
+    const hidesPaidItemAmountFields =
+      activeFlow === "pickup_paid" && (activePickup.marketplace === "wildberries" || activePickup.marketplace === "ozon");
     const isTrackingCodePaid =
       activeFlow === "pickup_paid" &&
       (activePickup.marketplace === "5post" || activePickup.marketplace === "dpd" || activePickup.marketplace === "avito");
@@ -1283,8 +1303,8 @@ export function SuperboxApp() {
             firstName: activePickup.firstName,
             lastName: activePickup.lastName,
             phone: activePickup.phone,
-            itemCount: usesTrackingPickupFields || isWildberriesPremiumPaid || isBulkyPaid ? undefined : Number(activePickup.itemCount),
-            totalAmount: usesTrackingPickupFields || isBulkyPaid ? undefined : Number(activePickup.totalAmount),
+            itemCount: usesTrackingPickupFields || isBulkyPaid || hidesPaidItemAmountFields ? undefined : Number(activePickup.itemCount),
+            totalAmount: usesTrackingPickupFields || isBulkyPaid || hidesPaidItemAmountFields ? undefined : Number(activePickup.totalAmount),
             trackingNumber: usesTrackingPickupFields || isDetmirPaid || isGoldapplePaid || isLetualPaid || isCourierPaid || isBulkyPaid ? activePickup.trackingNumber : undefined,
             shipmentNumber: isCdekPaid ? activePickup.shipmentNumber : undefined,
             senderName: isCourierPaid || isBulkyPaid ? activePickup.senderName : undefined,
@@ -1298,7 +1318,6 @@ export function SuperboxApp() {
     if (!activePickup.pickupPoint) nextErrors.pickupPoint = "Выберите пункт выдачи";
     if (isBulkyPaid && activePickup.bulkyAttachments.length === 0) nextErrors.attachment = paidFieldCopy.attachmentRequiredError;
     if (activeFlow === "pickup_paid" && !usesTrackingPickupFields && !isBulkyPaid && !activePickup.attachment) nextErrors.attachment = paidFieldCopy.attachmentRequiredError;
-    if (isWildberriesPremiumPaid && !activePickup.productAttachment) nextErrors.productAttachment = "Прикрепите скриншот товара.";
     if (Object.keys(nextErrors).length > 0) {
       updatePickup({ errors: nextErrors });
       return;
@@ -1315,11 +1334,11 @@ export function SuperboxApp() {
           phone: activePickup.phone,
           size: activeFlow === "pickup_standard" ? activePickup.size.trim() || undefined : undefined,
           itemCount:
-            activeFlow === "pickup_paid" && !usesTrackingPickupFields && !isWildberriesPremiumPaid && !isBulkyPaid
+            activeFlow === "pickup_paid" && !usesTrackingPickupFields && !isBulkyPaid && !hidesPaidItemAmountFields
               ? activePickup.itemCount
               : undefined,
           totalAmount:
-            activeFlow === "pickup_paid" && !usesTrackingPickupFields && !isBulkyPaid
+            activeFlow === "pickup_paid" && !usesTrackingPickupFields && !isBulkyPaid && !hidesPaidItemAmountFields
               ? activePickup.totalAmount
               : undefined,
           trackingNumber: usesTrackingPickupFields || isDetmirPaid || isGoldapplePaid || isLetualPaid || isCourierPaid || isBulkyPaid ? activePickup.trackingNumber : undefined,
@@ -1329,7 +1348,6 @@ export function SuperboxApp() {
           sourceUrl: activeFlow === "pickup_standard" ? activePickup.sourceUrl : undefined,
           attachment: activeFlow === "pickup_paid" && !isBulkyPaid ? activePickup.attachment ?? undefined : undefined,
           bulkyAttachments: activeFlow === "pickup_paid" && isBulkyPaid ? activePickup.bulkyAttachments : undefined,
-          productAttachment: activeFlow === "pickup_paid" && isWildberriesPremiumPaid ? activePickup.productAttachment ?? undefined : undefined,
         });
         setActivePickup((current) => ({ ...current, step: 3, result: response.order, errors: {} }));
       } catch (error) {
@@ -1569,9 +1587,9 @@ export function SuperboxApp() {
     const isDetmirPaid = paid && activePickup.marketplace === "detmir";
     const isGoldapplePaid = paid && activePickup.marketplace === "goldapple";
     const isLetualPaid = paid && activePickup.marketplace === "letual";
-    const isWildberriesPremiumPaid = paid && activePickup.marketplace === "wildberries_premium";
     const isCourierPaid = paid && activePickup.marketplace === "courier";
     const isBulkyPaid = paid && activePickup.marketplace === "bulky";
+    const hidesPaidItemAmountFields = paid && (activePickup.marketplace === "wildberries" || activePickup.marketplace === "ozon");
     const isTrackingCodePaid =
       paid && (activePickup.marketplace === "5post" || activePickup.marketplace === "dpd" || activePickup.marketplace === "avito");
     const usesTrackingPickupFields = isCdekPaid || isTrackingCodePaid;
@@ -1585,8 +1603,25 @@ export function SuperboxApp() {
 
     if (activePickup.step === 1) {
       if (paid) {
-        const detmirMarketplace = marketplaces.find((marketplace) => marketplace.id === "detmir");
-        const primaryPaidMarketplaces = marketplaces.filter((marketplace) => marketplace.id !== "detmir");
+        const paidSourceOptions: Array<
+          | { kind: "marketplace"; id: MarketplaceId; label: string; asset: string }
+          | { kind: "special"; id: SpecialPickupId; label: string; icon: string }
+          | { kind: "link"; id: "pickup_standard"; label: string; icon: string }
+        > = [
+          ...marketplaces.map((marketplace) => ({
+            kind: "marketplace" as const,
+            id: marketplace.id,
+            label: humanizeMarketplace(marketplace.id),
+            asset: marketplace.asset,
+          })),
+          ...specialPickupOptions.map((option) => ({
+            kind: "special" as const,
+            id: option.id,
+            label: option.label,
+            icon: option.icon,
+          })),
+          { kind: "link" as const, id: "pickup_standard", label: "Заказ по ссылке", icon: "🔗" },
+        ];
 
         return (
           <section
@@ -1611,14 +1646,21 @@ export function SuperboxApp() {
                 </div>
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  {primaryPaidMarketplaces.map((marketplace) => {
-                    const active = activePickup.marketplace === marketplace.id;
+                  {paidSourceOptions.map((option) => {
+                    const active = option.kind !== "link" && activePickup.marketplace === option.id;
 
                     return (
                       <button
-                        key={marketplace.id}
+                        key={`${option.kind}-${option.id}`}
                         type="button"
-                        onClick={() => updatePickup({ marketplace: marketplace.id, errors: {} })}
+                        onClick={() => {
+                          if (option.kind === "link") {
+                            openFlow("pickup_standard");
+                            return;
+                          }
+
+                          updatePickup({ marketplace: option.id, errors: {} });
+                        }}
                         className={`group relative flex min-h-[228px] flex-col items-center overflow-hidden rounded-[28px] border px-5 py-6 text-center transition-all duration-200 ${
                           active
                             ? "border-[#8cb7ff] bg-[linear-gradient(180deg,#ffffff_0%,#edf5ff_100%)] shadow-[0_22px_40px_rgba(68,117,194,0.16)]"
@@ -1632,126 +1674,31 @@ export function SuperboxApp() {
                         ) : null}
 
                         <span className="flex h-28 w-28 items-center justify-center rounded-[30px] bg-[#f2f6fc] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
-                          <Image
-                            src={`/marketplaces/${marketplace.asset}`}
-                            alt={humanizeMarketplace(marketplace.id)}
-                            width={156}
-                            height={64}
-                            className={`h-14 w-[156px] object-contain transition duration-200 ${
-                              active ? "" : "grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100"
-                            }`}
-                          />
+                          {option.kind === "marketplace" ? (
+                            <Image
+                              src={`/marketplaces/${option.asset}`}
+                              alt={option.label}
+                              width={156}
+                              height={64}
+                              className={`h-14 w-[156px] object-contain transition duration-200 ${
+                                active ? "" : "grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100"
+                              }`}
+                            />
+                          ) : (
+                            <span className={`text-[3.25rem] ${option.kind === "link" ? "text-[#3f74cb]" : ""}`}>{option.icon}</span>
+                          )}
                         </span>
 
                         <div className="mt-8 flex flex-1 items-center justify-center">
-                          <p className="text-center text-[1.35rem] font-extrabold leading-tight text-[#123763]">{humanizeMarketplace(marketplace.id)}</p>
+                          <p className="text-center text-[1.35rem] font-extrabold leading-tight text-[#123763]">{option.label}</p>
                         </div>
                       </button>
                     );
                   })}
-                </div>
-
-                <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  {detmirMarketplace ? (
-                    <button
-                      type="button"
-                      onClick={() => updatePickup({ marketplace: detmirMarketplace.id, errors: {} })}
-                      className={`group relative flex min-h-[228px] flex-col items-center overflow-hidden rounded-[28px] border px-5 py-6 text-center transition-all duration-200 ${
-                        activePickup.marketplace === detmirMarketplace.id
-                          ? "border-[#8cb7ff] bg-[linear-gradient(180deg,#ffffff_0%,#edf5ff_100%)] shadow-[0_22px_40px_rgba(68,117,194,0.16)]"
-                          : "border-[#d7e4f7] bg-white/92 hover:-translate-y-1 hover:border-[#b7cff4] hover:bg-white hover:shadow-[0_20px_34px_rgba(68,117,194,0.12)]"
-                      }`}
-                    >
-                      {activePickup.marketplace === detmirMarketplace.id ? (
-                        <span className="absolute bottom-4 right-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(180deg,#5e9df1_0%,#487dd6_100%)] text-sm font-bold text-white shadow-[0_12px_24px_rgba(45,90,175,0.22)]">
-                          ✓
-                        </span>
-                      ) : null}
-
-                      <span className="flex h-28 w-28 items-center justify-center rounded-[30px] bg-[#f2f6fc] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
-                        <Image
-                          src={`/marketplaces/${detmirMarketplace.asset}`}
-                          alt={humanizeMarketplace(detmirMarketplace.id)}
-                          width={156}
-                          height={64}
-                          className={`h-14 w-[156px] object-contain transition duration-200 ${
-                            activePickup.marketplace === detmirMarketplace.id
-                              ? ""
-                              : "grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100"
-                          }`}
-                        />
-                      </span>
-
-                      <div className="mt-8 flex flex-1 items-center justify-center">
-                        <p className="text-center text-[1.35rem] font-extrabold leading-tight text-[#123763]">{humanizeMarketplace(detmirMarketplace.id)}</p>
-                      </div>
-                    </button>
-                  ) : null}
-
-                  {specialPickupOptions.map((opt) => {
-                    const active = activePickup.marketplace === opt.id;
-
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => updatePickup({ marketplace: opt.id, errors: {} })}
-                        className={`group relative flex min-h-[228px] flex-col items-center overflow-hidden rounded-[28px] border px-5 py-6 text-center transition-all duration-200 ${
-                          active
-                            ? "border-[#8cb7ff] bg-[linear-gradient(180deg,#ffffff_0%,#edf5ff_100%)] shadow-[0_22px_40px_rgba(68,117,194,0.16)]"
-                            : "border-[#d7e4f7] bg-white/90 hover:-translate-y-1 hover:border-[#b7cff4] hover:bg-white hover:shadow-[0_20px_34px_rgba(68,117,194,0.12)]"
-                        }`}
-                      >
-                        <span className="flex h-28 w-28 items-center justify-center rounded-[30px] bg-[#f2f6fc] text-[3.25rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
-                          {opt.icon}
-                        </span>
-
-                        {active ? (
-                          <span className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(180deg,#5e9df1_0%,#487dd6_100%)] text-sm font-bold text-white shadow-[0_12px_24px_rgba(45,90,175,0.22)]">
-                            ✓
-                          </span>
-                        ) : null}
-
-                        <div className="mt-8 flex flex-1 items-center justify-center">
-                          <p className="text-center text-[1.35rem] font-extrabold leading-tight text-[#123763]">{opt.label}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-
-                  <button
-                    type="button"
-                    onClick={() => openFlow("pickup_standard")}
-                    className="group relative hidden min-h-[228px] flex-col items-center overflow-hidden rounded-[28px] border border-[#d7e4f7] bg-white/92 px-5 py-6 text-center transition-all duration-200 hover:-translate-y-1 hover:border-[#b7cff4] hover:bg-white hover:shadow-[0_20px_34px_rgba(68,117,194,0.12)] xl:flex"
-                  >
-                    <span className="flex h-28 w-28 items-center justify-center rounded-[30px] bg-[#f2f6fc] text-[3.25rem] text-[#3f74cb] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
-                      🔗
-                    </span>
-
-                    <div className="mt-8 flex flex-1 items-center justify-center">
-                      <p className="text-center text-[1.35rem] font-extrabold leading-tight text-[#123763]">Заказ по ссылке</p>
-                    </div>
-                  </button>
                 </div>
 
                 {activePickup.marketplace ? (
-                  <div className="fixed bottom-4 left-1/2 z-30 w-[calc(100vw-2rem)] max-w-[1020px] -translate-x-1/2 px-0 sm:bottom-5 sm:w-[calc(100vw-3rem)]">
-                    <div className="rounded-[30px] border border-white/80 bg-white/94 p-4 shadow-[0_24px_60px_rgba(39,77,146,0.22)] backdrop-blur-xl sm:p-5">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#6d88b2]">Выбранный сценарий</p>
-                          <p className="mt-2 truncate text-2xl font-extrabold leading-tight text-[#13345f]">{currentMarketplace}</p>
-                        </div>
-
-                        <PrimaryButton
-                          onClick={continuePickupSelection}
-                          className="min-h-14 w-full rounded-[22px] bg-[linear-gradient(180deg,#4c8ce6_0%,#3b74cf_100%)] text-base font-extrabold shadow-[0_20px_36px_rgba(43,92,180,0.24)] sm:w-[350px]"
-                        >
-                          Продолжить
-                        </PrimaryButton>
-                      </div>
-                    </div>
-                  </div>
+                  <FloatingContinueBar selectedLabel={currentMarketplace} onContinue={continuePickupSelection} />
                 ) : null}
 
                 {activePickup.errors.marketplace ? (
@@ -1842,23 +1789,9 @@ export function SuperboxApp() {
               ) : null}
             </div>
 
-            <div className="fixed bottom-4 left-1/2 z-30 w-[calc(100vw-2rem)] max-w-[1020px] -translate-x-1/2 px-0 sm:bottom-5 sm:w-[calc(100vw-3rem)]">
-              <div className="rounded-[30px] border border-white/80 bg-white/94 p-4 shadow-[0_24px_60px_rgba(39,77,146,0.22)] backdrop-blur-xl sm:p-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-[#6d88b2]">Выбранный сценарий</p>
-                    <p className="mt-2 truncate text-2xl font-extrabold leading-tight text-[#13345f]">{currentMarketplace}</p>
-                  </div>
-
-                  <PrimaryButton
-                    onClick={continuePickupSelection}
-                    className="min-h-14 w-full rounded-[22px] bg-[linear-gradient(180deg,#4c8ce6_0%,#3b74cf_100%)] text-base font-extrabold shadow-[0_20px_36px_rgba(43,92,180,0.24)] sm:w-[350px]"
-                  >
-                    Продолжить
-                  </PrimaryButton>
-                </div>
-              </div>
-            </div>
+            {activePickup.marketplace ? (
+              <FloatingContinueBar selectedLabel={currentMarketplace} onContinue={continuePickupSelection} />
+            ) : null}
           </div>
         </section>
       );
@@ -1934,41 +1867,7 @@ export function SuperboxApp() {
               <Input id={`${activeFlow}-phone`} placeholder="+7 (___) ___-__-__" value={activePickup.phone} onChange={(event) => updatePickup({ phone: event.target.value })} />
             </Field>
 
-            {isWildberriesPremiumPaid ? (
-              <>
-                <div className="rounded-[24px] border border-[color:rgba(196,46,160,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,244,255,0.96))] px-5 py-4 text-center text-sm font-semibold leading-7 text-[color:var(--foreground)] shadow-[0_12px_28px_rgba(84,58,128,0.06)]">
-                  Только для товаров стоимостью более 20000 р. Доставка оплачивается по тарифной сетке по весу товаров!
-                </div>
-
-                <Field label="Укажите стоимость товара" htmlFor={`${activeFlow}-amount`} error={activePickup.errors.totalAmount}>
-                  <InputWithSuffix id={`${activeFlow}-amount`} type="number" min="20001" suffix="₽" value={activePickup.totalAmount} onChange={(event) => updatePickup({ totalAmount: event.target.value })} />
-                </Field>
-
-                <Field label="Прикрепите скриншот товара" htmlFor={`${activeFlow}-productAttachment`} error={activePickup.errors.productAttachment}>
-                  <FileUploadCard
-                    id={`${activeFlow}-productAttachment`}
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    file={activePickup.productAttachment}
-                    variant="sarma"
-                    onChange={(file) => updatePickup({ productAttachment: file })}
-                  />
-                </Field>
-
-                <Field
-                  label="Штрих-код или QR код для получения (Сделайте скриншот и приложите его)"
-                  htmlFor={`${activeFlow}-attachment`}
-                  error={activePickup.errors.attachment}
-                >
-                  <FileUploadCard
-                    id={`${activeFlow}-attachment`}
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    file={activePickup.attachment}
-                    variant="sarma"
-                    onChange={(file) => updatePickup({ attachment: file })}
-                  />
-                </Field>
-              </>
-            ) : isCdekPaid ? (
+            {isCdekPaid ? (
               <>
                 <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-start">
                   <Field
@@ -2245,24 +2144,26 @@ export function SuperboxApp() {
                       </Field>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <Field
-                        label={paidFieldCopy.itemCountLabel}
-                        htmlFor={`${activeFlow}-count`}
-                        hint="Введите общее количество товаров для получения"
-                        error={activePickup.errors.itemCount}
-                      >
-                        <InputWithSuffix id={`${activeFlow}-count`} type="number" min="1" suffix="шт." value={activePickup.itemCount} onChange={(event) => updatePickup({ itemCount: event.target.value })} />
-                      </Field>
-                      <Field
-                        label={paidFieldCopy.totalAmountLabel}
-                        htmlFor={`${activeFlow}-amount`}
-                        hint="Укажите, пожалуйста, общую сумму всех товаров в заказе"
-                        error={activePickup.errors.totalAmount}
-                      >
-                        <InputWithSuffix id={`${activeFlow}-amount`} type="number" min="1" suffix="₽" value={activePickup.totalAmount} onChange={(event) => updatePickup({ totalAmount: event.target.value })} />
-                      </Field>
-                    </div>
+                    {!hidesPaidItemAmountFields ? (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <Field
+                          label={paidFieldCopy.itemCountLabel}
+                          htmlFor={`${activeFlow}-count`}
+                          hint="Введите общее количество товаров для получения"
+                          error={activePickup.errors.itemCount}
+                        >
+                          <InputWithSuffix id={`${activeFlow}-count`} type="number" min="1" suffix="шт." value={activePickup.itemCount} onChange={(event) => updatePickup({ itemCount: event.target.value })} />
+                        </Field>
+                        <Field
+                          label={paidFieldCopy.totalAmountLabel}
+                          htmlFor={`${activeFlow}-amount`}
+                          hint="Укажите, пожалуйста, общую сумму всех товаров в заказе"
+                          error={activePickup.errors.totalAmount}
+                        >
+                          <InputWithSuffix id={`${activeFlow}-amount`} type="number" min="1" suffix="₽" value={activePickup.totalAmount} onChange={(event) => updatePickup({ totalAmount: event.target.value })} />
+                        </Field>
+                      </div>
+                    ) : null}
 
                     <Field label={paidFieldCopy.attachmentLabel} htmlFor={`${activeFlow}-attachment`} hint={paidFieldCopy.attachmentHint} error={activePickup.errors.attachment}>
                       <FileUploadCard
@@ -2363,24 +2264,26 @@ export function SuperboxApp() {
                   </>
                 ) : (
                   <>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <Field
-                        label={paidFieldCopy.itemCountLabel}
-                        htmlFor={`${activeFlow}-count`}
-                        hint="Введите общее количество товаров для получения"
-                        error={activePickup.errors.itemCount}
-                      >
-                        <InputWithSuffix id={`${activeFlow}-count`} type="number" min="1" suffix="шт." value={activePickup.itemCount} onChange={(event) => updatePickup({ itemCount: event.target.value })} />
-                      </Field>
-                      <Field
-                        label={paidFieldCopy.totalAmountLabel}
-                        htmlFor={`${activeFlow}-amount`}
-                        hint="Укажите, пожалуйста, общую сумму всех товаров в заказе"
-                        error={activePickup.errors.totalAmount}
-                      >
-                        <InputWithSuffix id={`${activeFlow}-amount`} type="number" min="1" suffix="₽" value={activePickup.totalAmount} onChange={(event) => updatePickup({ totalAmount: event.target.value })} />
-                      </Field>
-                    </div>
+                    {!hidesPaidItemAmountFields ? (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <Field
+                          label={paidFieldCopy.itemCountLabel}
+                          htmlFor={`${activeFlow}-count`}
+                          hint="Введите общее количество товаров для получения"
+                          error={activePickup.errors.itemCount}
+                        >
+                          <InputWithSuffix id={`${activeFlow}-count`} type="number" min="1" suffix="шт." value={activePickup.itemCount} onChange={(event) => updatePickup({ itemCount: event.target.value })} />
+                        </Field>
+                        <Field
+                          label={paidFieldCopy.totalAmountLabel}
+                          htmlFor={`${activeFlow}-amount`}
+                          hint="Укажите, пожалуйста, общую сумму всех товаров в заказе"
+                          error={activePickup.errors.totalAmount}
+                        >
+                          <InputWithSuffix id={`${activeFlow}-amount`} type="number" min="1" suffix="₽" value={activePickup.totalAmount} onChange={(event) => updatePickup({ totalAmount: event.target.value })} />
+                        </Field>
+                      </div>
+                    ) : null}
 
                     <Field label={paidFieldCopy.attachmentLabel} htmlFor={`${activeFlow}-attachment`} hint={paidFieldCopy.attachmentHint} error={activePickup.errors.attachment}>
                       <FileUploadCard
@@ -2456,7 +2359,8 @@ export function SuperboxApp() {
                 variant="sarma"
                 options={pickupPointOptions.map((pickupPoint) => ({
                   value: pickupPoint.id,
-                  label: pickupPoint.label,
+                  label: `${pickupPoint.label}: ${pickupPoint.address}`,
+                  description: `${pickupPoint.hours} · ${pickupPoint.contact}`,
                 }))}
               />
             </Field>
@@ -3266,7 +3170,7 @@ export function SuperboxApp() {
           </h1>
 
           <p className="mt-5 text-lg font-bold leading-8 text-white/88 sm:text-[1.65rem]">
-            WB Дорогостой · WB ОПТ · СДЭК · Авито · DPD
+            Wildberries · СДЭК · Авито · DPD
           </p>
         </div>
 
