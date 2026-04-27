@@ -2,40 +2,52 @@
 
 ## Что это за проект
 
-`sbpsite-main` - монорепозиторий из двух связанных частей:
+`sarmaexpress` - монорепозиторий для сайта и сервисных flow компании:
 
-1. `Сарма Экспресс` - публичная витрина, маркетинговая оболочка и отдельные публичные страницы.
-2. `SUPERBOX` - прикладной интерфейс с flow для заказов, отслеживания, тарифов, отправлений по РФ и поддержки.
+1. `Сарма Экспресс` - публичная витрина, страницы услуг, калькулятор и карта пунктов выдачи.
+2. `SUPERBOX` - прикладной интерфейс для интернет-магазинов, заказов, отслеживания, тарифов и служебных сценариев.
 
-Текущая задача проекта - постепенно привести важные `SUPERBOX flow` к визуальному стилю `Сарма Экспресс`, не ломая уже работающие сценарии.
+Пользователь работает на русском. Отвечать и фиксировать handoff лучше на русском.
+
+## Важный текущий статус
+
+- Основной GitHub-репозиторий: `https://github.com/Serebubi/sarmaexpress`.
+- Открыт draft PR: `https://github.com/Serebubi/sarmaexpress/pull/1`.
+- Ветка PR: `codex/calculator-marketplaces-ftl-ltl`.
+- Коммиты PR:
+  - `09f5211` - основные изменения калькулятора, Superbox, FTL/LTL.
+  - следующий коммит после обновления handoff-файлов должен содержать только `AGENT.md`, `CURRENT_STATUS.md`, `PROJECT_CONTEXT.md`, `HANDOFF.md`.
+- Рабочая папка пользователя `C:\Users\Dell\Documents\Codex\sarmaexpress-main` не является git-репозиторием.
+- Для PR был создан свежий клон: `C:\Users\Dell\Documents\Codex\sarmaexpress-pr-work`.
 
 ## Как работать
 
-- Общаться с пользователем на русском.
-- Перед началом нового диалога читать:
+- Перед новой задачей читать:
   1. `AGENT.md`
   2. `CURRENT_STATUS.md`
   3. `PROJECT_CONTEXT.md`
   4. `HANDOFF.md`
 - Не откатывать чужие изменения без явной просьбы.
-- Не трогать backend/Bitrix, если задача явно не требует этого.
-- Для UI-задач в первую очередь работать во `frontend`, иногда в `shared/src/index.ts`.
-- Если пользователь просит "как на главной", использовать общий `SarmaExpressHeader` и синий hero-фон `frontend/public/brand/hero-background.png`.
+- Не коммитить локальные Excel, PNG, dev-логи, `.next`, `node_modules`, `storage/data/orders.json` и прочие рабочие артефакты без отдельной просьбы.
+- Для UI-задач сначала смотреть `frontend`.
+- Для форм и схем смотреть также `shared/src/index.ts`.
+- Backend трогать только если меняются формы, API заказов или интеграции.
 
 ## Основные маршруты
 
 Публичные страницы:
 
 - `/` - главная `Сарма Экспресс`
-- `/sarma-express` - дублирующая главная
+- `/sarma-express` - дубль главной
 - `/calculator` - калькулятор доставки
-- `/pickup-points` - пункты выдачи
+- `/pickup-points` - пункты выдачи и карта
+- `/ftl` - страница `FTL - Полная загрузка`
+- `/ltl` - страница `LTL - Сборные грузы`
 
 `SUPERBOX`:
 
 - `/superbox`
 - `/superbox?flow=pickup_paid`
-- `/superbox?flow=pickup_standard`
 - `/superbox?flow=order_lookup`
 - `/superbox?flow=ship_russia`
 - `/superbox?flow=tariffs`
@@ -44,49 +56,59 @@
 - `/superbox?flow=cancel_order`
 - `/superbox?flow=support`
 
-## Актуальная верхняя навигация
+## Навигация и карточки услуг
 
-Файл: `frontend/components/sarma-express-header.tsx`
+Файл верхнего меню: `frontend/components/sarma-express-header.tsx`.
 
-- `Калькулятор` -> `/calculator`
-- `Отслеживание` -> `/superbox?flow=order_lookup`
-- `Бизнесу` -> `/superbox?flow=business`
-- `Тарифы` -> `/superbox?flow=tariffs`
-- `Доставка из интернет-магазинов` -> `/superbox?flow=pickup_paid`
-- `Отправления в РФ` -> `/superbox?flow=ship_russia`
-- `Пункты выдачи` -> `/pickup-points`
+На главной карточки услуг находятся в `frontend/components/sarma-express-page.tsx`.
+
+Текущие переходы карточек:
+
+- `ЭКСПРЕСС ДОСТАВКА` -> `/superbox?flow=pickup_paid`
+- `LTL - СБОРНЫЕ ГРУЗЫ` -> `/ltl`
+- `FTL - ПОЛНАЯ ЗАГРУЗКА` -> `/ftl`
+- `ДОСТАВКА ИЗ ИНТЕРНЕТ-МАГАЗИНОВ` -> `/superbox?flow=pickup_paid`
 
 ## Ключевые файлы
 
-- `frontend/components/sarma-express-header.tsx`
-- `frontend/components/sarma-express-page.tsx`
-- `frontend/components/delivery-calculator-page.tsx`
-- `frontend/components/superbox-app.tsx`
-- `frontend/components/pickup-points-page.tsx`
-- `frontend/lib/delivery-tariffs.ts`
-- `frontend/app/globals.css`
-- `shared/src/index.ts`
-- `backend/src/routes/orders.ts`
-- `backend/src/services/order-service.ts`
-- `backend/src/services/bitrix-service.ts`
+- `frontend/components/delivery-calculator-page.tsx` - калькулятор доставки.
+- `frontend/lib/delivery-tariffs.ts` - тарифная модель, города, ограничения ПВЗ/склада.
+- `frontend/components/superbox-app.tsx` - сценарии Superbox и маркетплейсы.
+- `frontend/components/pickup-points-page.tsx` - страница ПВЗ и карта.
+- `frontend/components/sarma-express-page.tsx` - главная и карточки услуг.
+- `frontend/components/ftl-page.tsx` - страница FTL.
+- `frontend/components/ltl-page.tsx` - страница LTL.
+- `shared/src/index.ts` - общие схемы, типы, точки выдачи, валидация форм.
+- `backend/src/routes/orders.ts` - обработка новых форм заказов.
 
-## Что уже важно знать по UI
+## Что важно знать по калькулятору
 
-- Главная `Сарма Экспресс` живёт на `/`.
-- Все 4 карточки блока `Наши услуги` на главной ведут на `/superbox?flow=pickup_paid`.
-- Калькулятор на `/calculator` уже не заглушка: в нём есть реальный расчёт по тарифной сетке.
-- Отслеживание `order_lookup` теперь ищет только по номеру заказа. По телефону искать нельзя.
-- `pickup_paid`, `pickup_standard`, `ship_russia`, `order_lookup`, `tariffs` и `business` уже визуально приведены к Sarma-стилю.
+- В блоках `Откуда` и `Куда` теперь 3 кнопки: `ПВЗ`, `Склад`, `Курьер`.
+- Если варианта нет в городе или он недоступен по весу, кнопка неактивна.
+- Если вес превышает лимит ПВЗ, а склада в городе нет, автоматически выбирается `Курьер`.
+- Москва в маршруте переводит сценарий в заявку/звонок и сообщение про направление от 500 кг.
+- Для грузов от 500 кг справа показывается специнформация и CTA `Заполнить заявку` / `Позвонить нам`.
+- После расчёта есть кнопка оформления заказа и анкета на этом же экране.
+- Поле объёма заменено на `длина`, `ширина`, `высота`.
 
-## Практические правила
+## Что важно знать по Superbox
 
-- Если задача про верхнее меню - начинать с `sarma-express-header.tsx`.
-- Если задача про конкретный сценарий `SUPERBOX` - смотреть `superbox-app.tsx`.
-- Если задача про калькулятор - смотреть `delivery-calculator-page.tsx` и `frontend/lib/delivery-tariffs.ts`.
-- Если задача про ПВЗ - синхронизировать `shared/src/index.ts` и `pickup-points-page.tsx`.
-- Если нужна проверка UI, использовать локальную сборку/сервер и по возможности браузерную проверку.
+- Убраны сценарии `WB опт` и `WB дорогостой`.
+- Для OZON и Wildberries в анкетах убраны поля `Количество товаров` и `Итоговая цена всех товаров`.
+- Плашка с кнопкой `Продолжить` после выбора маркетплейса фиксируется снизу экрана.
+- Пункты выдачи и склады добавлены из локального файла `Новая таблица (1).xlsx` в список выбора и карту.
 
-## Осторожно
+## Проверки
 
-- В рабочей папке могут быть локальные служебные файлы вроде `.serena/` и локальный Excel `Тарифы Сарма Экспресс.xlsx`; не коммитить их без явной просьбы.
-- `shared/dist` может не совпадать с `shared/src`; источником правды считать `shared/src`.
+Перед PR были выполнены:
+
+- `npm run build -w frontend` - проходит.
+- `npm run build -w backend` - проходит.
+
+`npm run lint -w frontend` на текущем коде падает не из-за FTL/LTL, а на существующих местах:
+
+- `frontend/components/delivery-calculator-page.tsx:273` - `react-hooks/set-state-in-effect`.
+- `frontend/components/superbox-app.tsx:775` - `react-hooks/set-state-in-effect`.
+- Также есть несколько warnings по unused-переменным.
+
+После `npm ci` npm показывает audit-предупреждения: `3 moderate`, `4 high`.

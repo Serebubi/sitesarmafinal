@@ -26,7 +26,6 @@ const comparisonRows = [
   ["Перегрузки", "Нет", "Минимум 1-2"],
   ["Ставка", "Фиксирована до погрузки", "Может измениться"],
   ["Сроки", "Индивидуально, без задержек на складах", "Зависят от расписания терминалов"],
-  ["Грузчики", "Под запрос", "По тарифу за каждую операцию"],
 ];
 
 const includedItems = [
@@ -39,8 +38,8 @@ const includedItems = [
 
 const excludedItems = [
   "Погрузка и выгрузка - на стороне отправителя и получателя",
-  "Грузчики - найдём под запрос",
   "Страхование с объявленной ценностью - по запросу",
+  "Простой сверх нормы - по договору",
 ];
 
 const offerRows = [
@@ -64,7 +63,7 @@ export function LtlPage() {
 
   return (
     <main className="min-h-screen bg-[#edf2f8] text-[#12243f]">
-      <SarmaExpressHeader />
+      <SarmaExpressHeader activeItem="ltl" />
 
       <section
         className="relative overflow-hidden bg-[#3f84e6] bg-cover bg-[position:74%_center] bg-no-repeat"
@@ -135,8 +134,11 @@ export function LtlPage() {
         </div>
       </section>
 
-      <section className="mx-auto grid w-full max-w-[1240px] gap-6 px-4 pb-12 lg:grid-cols-[1.08fr_0.92fr] lg:px-6 lg:pb-16">
+      <section className="mx-auto w-full max-w-[1240px] px-4 pb-8 lg:px-6 lg:pb-10">
         <ComparisonTable />
+      </section>
+
+      <section className="mx-auto w-full max-w-[1240px] px-4 pb-12 lg:px-6 lg:pb-16">
         <OfferCard />
       </section>
 
@@ -216,16 +218,25 @@ function ComparisonTable() {
 
 function OfferCard() {
   return (
-    <article className="rounded-[28px] bg-[linear-gradient(180deg,#ffffff_0%,#edf6ff_100%)] p-6 shadow-[0_24px_50px_rgba(16,45,88,0.1)] ring-1 ring-[#dce6f4]">
-      <p className="text-sm font-black uppercase tracking-[0.2em] text-[#356ac8]">Образец КП</p>
-      <h2 className="mt-3 text-3xl font-extrabold text-[#102a4e]">Как выглядит наше коммерческое предложение</h2>
-      <div className="mt-6 grid gap-3">
+    <article className="overflow-hidden rounded-[28px] bg-[#123763] shadow-[0_24px_50px_rgba(16,45,88,0.16)] ring-1 ring-[#dce6f4]">
+      <div className="grid gap-6 p-6 lg:grid-cols-[0.78fr_1.22fr] lg:p-7">
+        <div className="flex flex-col justify-between gap-5">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-[#9fd0ff]">Образец КП</p>
+            <h2 className="mt-3 text-3xl font-extrabold leading-tight text-white">Как выглядит наше коммерческое предложение</h2>
+          </div>
+          <p className="max-w-[420px] text-sm font-semibold leading-6 text-white/72">
+            После заявки экспедитор фиксирует маршрут, параметры груза и ставку в договоре-заявке.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
         {offerRows.map((row) => (
-          <div key={row[0]} className="rounded-2xl border border-[#d7e4f7] bg-white/82 p-4">
-            <div className="text-xs font-black uppercase tracking-[0.14em] text-[#7b93b8]">{row[0]}</div>
+          <div key={row[0]} className="rounded-2xl border border-white/12 bg-white p-4 shadow-[0_16px_30px_rgba(7,24,50,0.12)]">
+            <div className="text-xs font-black uppercase tracking-[0.14em] text-[#6c84aa]">{row[0]}</div>
             <div className="mt-1 text-sm font-black leading-6 text-[#173862]">{row[1]}</div>
           </div>
         ))}
+        </div>
       </div>
     </article>
   );
