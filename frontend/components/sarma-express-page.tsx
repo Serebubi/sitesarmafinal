@@ -25,13 +25,13 @@ export function SarmaExpressPage() {
         <div className="relative mx-auto grid min-h-[620px] w-full max-w-[1240px] gap-12 px-4 pb-32 pt-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(500px,1.05fr)] lg:px-6 lg:pb-40 lg:pt-16">
           <div className="z-10 flex flex-col justify-center">
             <h1 className="max-w-[620px] text-4xl font-extrabold leading-[1.15] text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.16)] sm:text-5xl lg:text-[4.15rem]">
-              Ежедневная доставка
+              Доставка и грузоперевозки
               <br />
-              на Новые Территории
+              по России
             </h1>
 
             <p className="mt-5 inline-block w-fit max-w-[540px] bg-[linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,0.12)_12%,rgba(255,255,255,0.22)_86%,rgba(255,255,255,0)_100%)] px-4 py-2 text-sm font-bold text-[#0e2243] sm:text-lg">
-              Быстро, надежно, с отслеживанием в реальном времени
+              Доставка из интернет-магазинов, отправления по РФ, сборные грузы и полная загрузка
             </p>
 
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">

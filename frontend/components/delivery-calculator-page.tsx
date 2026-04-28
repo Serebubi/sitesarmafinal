@@ -18,7 +18,7 @@ import {
 } from "@/lib/delivery-tariffs";
 
 type AddressType = "apartment" | "private";
-type DeliveryMode = "pvz" | "warehouse" | "courier";
+type DeliveryMode = "pvz" | "courier";
 type CalculatorDialog = "order" | "request" | "phones" | null;
 type DeliveryLegResolution =
   | {
@@ -38,6 +38,8 @@ type CalculatorState = {
   to: CityKey;
   fromMode: DeliveryMode;
   toMode: DeliveryMode;
+  fromPickupPoint: string;
+  toPickupPoint: string;
   weight: string;
   length: string;
   width: string;
@@ -112,8 +114,10 @@ const mainContactPhone = {
 const initialState: CalculatorState = {
   from: "rostov",
   to: "donetsk",
-  fromMode: "warehouse",
+  fromMode: "pvz",
   toMode: "pvz",
+  fromPickupPoint: "",
+  toPickupPoint: "",
   weight: "",
   length: "",
   width: "",
@@ -155,26 +159,20 @@ function getDeliveryModeAvailability(city: CityKey, mode: DeliveryMode, chargeab
   }
 
   const points = cityPickupPoints[city] ?? [];
-  const pvz = points.find((point) => point.type === "pvz");
-  const warehouse = points.find((point) => point.type === "warehouse");
+  const availablePoints = getAvailablePickupPoints(city, chargeableWeight);
 
-  if (mode === "warehouse") {
-    return warehouse
-      ? { available: true, reason: "" }
-      : { available: false, reason: `Склада в городе ${getCityLabel(city)} нет.` };
+  if (!points.length) {
+    return { available: false, reason: `Пунктов выдачи в городе ${getCityLabel(city)} нет.` };
   }
 
-  if (!pvz) {
-    return { available: false, reason: `ПВЗ в городе ${getCityLabel(city)} нет.` };
-  }
-  const threshold = pvz.thresholdKg ?? Number.POSITIVE_INFINITY;
+  if (!availablePoints.length) {
+    const maxThreshold = Math.max(...points.map((point) => point.thresholdKg ?? 0));
 
-  if (chargeableWeight > threshold) {
     return {
       available: false,
-      reason: warehouse
-        ? `ПВЗ принимает до ${formatKg(threshold)}. Выберите склад или курьера.`
-        : `ПВЗ принимает до ${formatKg(threshold)}, склада в городе нет. Доступен курьер.`,
+      reason: maxThreshold
+        ? `Пункты выдачи в городе ${getCityLabel(city)} принимают до ${formatKg(maxThreshold)}. Доступен курьер.`
+        : `Пункт выдачи в городе ${getCityLabel(city)} сейчас недоступен.`,
     };
   }
 
@@ -190,15 +188,42 @@ function getDefaultDeliveryMode(city: CityKey, preferred: DeliveryMode | undefin
     return "pvz";
   }
 
-  if (getDeliveryModeAvailability(city, "warehouse", chargeableWeight).available) {
-    return "warehouse";
-  }
-
   return "courier";
 }
 
 function formatKg(value: number) {
   return `${numberFormatter.format(value)} кг`;
+}
+
+function getPickupPointKey(point: CityPickupPoint) {
+  return `${point.type}:${point.address}`;
+}
+
+function getPickupPointTypeLabel(point: CityPickupPoint) {
+  return point.type === "warehouse" ? "СКЛАД" : "ПВЗ";
+}
+
+function getPickupPointLimitLabel(point: CityPickupPoint) {
+  return point.thresholdKg ? `до ${formatKg(point.thresholdKg)}` : "без ограничений по весу";
+}
+
+function isPickupPointAvailable(point: CityPickupPoint, chargeableWeight: number) {
+  return !point.thresholdKg || chargeableWeight <= point.thresholdKg;
+}
+
+function getAvailablePickupPoints(city: CityKey, chargeableWeight: number) {
+  return (cityPickupPoints[city] ?? []).filter((point) => isPickupPointAvailable(point, chargeableWeight));
+}
+
+function getSelectedPickupPoint(city: CityKey, selectedKey: string, chargeableWeight: number) {
+  const points = cityPickupPoints[city] ?? [];
+  const selectedPoint = points.find((point) => getPickupPointKey(point) === selectedKey);
+
+  if (selectedPoint && isPickupPointAvailable(selectedPoint, chargeableWeight)) {
+    return selectedPoint;
+  }
+
+  return points.find((point) => isPickupPointAvailable(point, chargeableWeight)) ?? null;
 }
 
 function phoneHref(phone: string) {
@@ -232,28 +257,32 @@ function createDisplayOrderNumber() {
   return `#${month}${day}-${suffix}`;
 }
 
-function resolveDeliveryLeg(city: CityKey, requestedMode: DeliveryMode, chargeableWeight: number): DeliveryLegResolution {
+function resolveDeliveryLeg(
+  city: CityKey,
+  requestedMode: DeliveryMode,
+  chargeableWeight: number,
+  pickupPointKey: string,
+): DeliveryLegResolution {
   const actualMode = getDefaultDeliveryMode(city, requestedMode, chargeableWeight);
 
   if (actualMode === "courier") {
     return { kind: "courier", label: "Курьер" };
   }
 
-  const points = cityPickupPoints[city] ?? [];
-  const pvz = points.find((point) => point.type === "pvz");
-  const warehouse = points.find((point) => point.type === "warehouse");
+  const point = getSelectedPickupPoint(city, pickupPointKey, chargeableWeight);
 
-  if (actualMode === "pvz" && pvz) {
-    const threshold = pvz.thresholdKg ?? Number.POSITIVE_INFINITY;
+  if (point) {
+    const label = point.type === "warehouse" ? "Склад" : "ПВЗ";
 
-    return { kind: "pickup", label: "ПВЗ", point: pvz, note: `ПВЗ принимает до ${formatKg(threshold)}.` };
+    return {
+      kind: "pickup",
+      label,
+      point,
+      note: `${label}: ${getPickupPointLimitLabel(point)}.`,
+    };
   }
 
-  if (actualMode === "warehouse" && warehouse) {
-    return { kind: "pickup", label: "Склад", point: warehouse, note: "В городе доступен склад." };
-  }
-
-  return { kind: "courier", label: "Курьер", note: "В городе нет ПВЗ/склада." };
+  return { kind: "courier", label: "Курьер", note: "В городе нет доступных пунктов выдачи." };
 }
 
 export function DeliveryCalculatorPage() {
@@ -265,8 +294,8 @@ export function DeliveryCalculatorPage() {
   const previewVolumeWeight =
     previewLength && previewWidth && previewHeight ? (previewLength * previewWidth * previewHeight) / 5000 : 0;
   const previewChargeableWeight = Math.max(previewActualWeight, previewVolumeWeight);
-  const previewFromLeg = resolveDeliveryLeg(state.from, state.fromMode, previewChargeableWeight);
-  const previewToLeg = resolveDeliveryLeg(state.to, state.toMode, previewChargeableWeight);
+  const previewFromLeg = resolveDeliveryLeg(state.from, state.fromMode, previewChargeableWeight, state.fromPickupPoint);
+  const previewToLeg = resolveDeliveryLeg(state.to, state.toMode, previewChargeableWeight, state.toPickupPoint);
   const hasCourierMode = previewFromLeg.kind === "courier" || previewToLeg.kind === "courier";
 
   useEffect(() => {
@@ -344,8 +373,8 @@ export function DeliveryCalculatorPage() {
 
     const courier = courierTariffs[band.category];
     const extraEligible = band.category !== "Малая" && band.category !== "Стандартная";
-    const fromLeg = resolveDeliveryLeg(state.from, state.fromMode, chargeableWeight);
-    const toLeg = resolveDeliveryLeg(state.to, state.toMode, chargeableWeight);
+    const fromLeg = resolveDeliveryLeg(state.from, state.fromMode, chargeableWeight, state.fromPickupPoint);
+    const toLeg = resolveDeliveryLeg(state.to, state.toMode, chargeableWeight, state.toPickupPoint);
     const courierLegs = Number(fromLeg.kind === "courier") + Number(toLeg.kind === "courier");
     const transportCost = Math.round(band.baseTariff * coefficient);
     const courierCost = courier.fixed * courierLegs;
@@ -417,7 +446,7 @@ export function DeliveryCalculatorPage() {
       <SarmaExpressHeader activeItem="calculator" />
 
       <section
-        className="relative overflow-hidden bg-[#4a8de7] bg-cover bg-[position:72%_center] bg-no-repeat"
+        className="relative overflow-x-hidden bg-[#4a8de7] bg-cover bg-[position:72%_center] bg-no-repeat"
         style={{ backgroundImage: "url('/brand/hero-background.png')" }}
       >
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(51,114,214,0.96)_0%,rgba(86,148,232,0.82)_34%,rgba(150,198,248,0.26)_64%,rgba(255,255,255,0)_100%)]" />
@@ -428,38 +457,42 @@ export function DeliveryCalculatorPage() {
           <DotPattern />
         </div>
 
-        <div className="relative mx-auto grid min-h-[calc(100vh-92px)] w-full max-w-[1320px] gap-8 px-4 py-12 lg:grid-cols-[minmax(0,640px)_minmax(380px,460px)] lg:items-start lg:px-6 lg:py-16">
-          <div className="relative z-10 w-full">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/36 bg-white/12 px-4 py-2 text-sm font-semibold text-white/92 backdrop-blur-sm">
+        <div className="relative mx-auto min-h-[calc(100vh-121px)] w-full max-w-[1320px] box-border px-4 py-8 lg:px-6 lg:py-2">
+          <div className="relative z-10 w-full max-w-[860px]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/36 bg-white/12 px-4 py-2 text-sm font-semibold text-white/92 backdrop-blur-sm lg:hidden">
               <span className="h-2.5 w-2.5 rounded-full bg-[#9fd0ff]" />
               Предварительный расчёт
             </div>
 
-            <h1 className="mt-6 max-w-[640px] text-4xl font-extrabold leading-[1.05] text-white drop-shadow-[0_16px_34px_rgba(20,56,120,0.22)] sm:text-5xl lg:text-[4rem]">
+            <h1 className="mt-3 max-w-[760px] text-4xl font-extrabold leading-[1.05] text-white drop-shadow-[0_16px_34px_rgba(20,56,120,0.22)] sm:text-5xl lg:mt-0 lg:text-[2.55rem]">
               Калькулятор
-              <br />
+              <br className="lg:hidden" />
               доставки
             </h1>
 
-            <p className="mt-5 max-w-[560px] text-base leading-7 text-white/88 sm:text-lg">
+            <p className="mt-1.5 max-w-[690px] text-base leading-7 text-white/88 sm:text-lg lg:text-sm lg:leading-6">
               Расчёт идёт по тарифной сетке Сарма Экспресс: базовый тариф, коэффициент направления, курьерская доставка,
               грузчики и подъём.
             </p>
+          </div>
 
+          <div className="relative z-10 mt-4 grid gap-4 text-[#173862] lg:mt-2 lg:grid-cols-[minmax(0,1fr)_380px]">
             <form
-              className="mt-8 rounded-[32px] border border-white/46 bg-[linear-gradient(180deg,rgba(244,249,255,0.3)_0%,rgba(226,238,255,0.2)_100%)] p-5 shadow-[0_28px_80px_rgba(28,78,160,0.24)] backdrop-blur-[20px] sm:p-7"
+              className="rounded-[32px] border border-white/62 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(235,244,255,0.9)_100%)] p-4 shadow-[0_28px_80px_rgba(28,78,160,0.2)] backdrop-blur-[20px] lg:p-5"
               onSubmit={(event) => {
                 event.preventDefault();
               }}
             >
-              <div className="grid gap-4">
+              <div className="grid gap-3 lg:grid-cols-2">
                 <FieldShell icon={<PinIcon />} label="Откуда">
                   <ModernSelect options={cityOptions} value={state.from} onChange={(value) => setCityField("from", value)} />
                   <DeliveryModeSelector
                     chargeableWeight={previewChargeableWeight}
                     city={state.from}
+                    selectedPickupPoint={state.fromPickupPoint}
                     value={state.fromMode}
                     onChange={(value) => setField("fromMode", value)}
+                    onPickupPointChange={(value) => setField("fromPickupPoint", value)}
                   />
                 </FieldShell>
 
@@ -468,12 +501,14 @@ export function DeliveryCalculatorPage() {
                   <DeliveryModeSelector
                     chargeableWeight={previewChargeableWeight}
                     city={state.to}
+                    selectedPickupPoint={state.toPickupPoint}
                     value={state.toMode}
                     onChange={(value) => setField("toMode", value)}
+                    onPickupPointChange={(value) => setField("toPickupPoint", value)}
                   />
                 </FieldShell>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-2 lg:col-span-2">
                   <FieldShell icon={<WeightIcon />} label="Вес груза, кг">
                     <input
                       aria-label="Вес груза, кг"
@@ -520,7 +555,7 @@ export function DeliveryCalculatorPage() {
                 </div>
 
                 {hasCourierMode ? (
-                  <>
+                  <div className="grid gap-3 lg:col-span-2">
                     <FieldShell icon={<HomeIcon />} label="Адрес для курьера">
                       <ModernSelect
                         options={addressTypeOptions}
@@ -530,7 +565,7 @@ export function DeliveryCalculatorPage() {
                     </FieldShell>
 
                     {state.addressType === "apartment" ? (
-                      <div className="grid gap-4 md:grid-cols-2">
+                      <div className="grid gap-3 md:grid-cols-2">
                         <FieldShell icon={<StairsIcon />} label="Этаж">
                           <input
                             aria-label="Этаж"
@@ -572,26 +607,20 @@ export function DeliveryCalculatorPage() {
                       onText="Нужны"
                       onChange={(value) => setField("needLoaders", value)}
                     />
-                  </>
+                  </div>
                 ) : null}
 
-                <button
-                  type="submit"
-                  className="mt-4 inline-flex min-h-14 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,#4f8fe8_0%,#356fcb_100%)] px-8 text-lg font-extrabold text-white shadow-[0_22px_38px_rgba(30,74,156,0.32)] transition hover:-translate-y-0.5"
-                >
-                  Рассчитать стоимость
-                </button>
               </div>
             </form>
-          </div>
 
-          <ResultPanel
-            from={state.from}
-            fromLeg={result.status === "ready" ? result.fromLeg : previewFromLeg}
-            result={result}
-            to={state.to}
-            toLeg={result.status === "ready" ? result.toLeg : previewToLeg}
-          />
+            <ResultPanel
+              from={state.from}
+              fromLeg={result.status === "ready" ? result.fromLeg : previewFromLeg}
+              result={result}
+              to={state.to}
+              toLeg={result.status === "ready" ? result.toLeg : previewToLeg}
+            />
+          </div>
         </div>
       </section>
     </main>
@@ -632,7 +661,7 @@ function ResultPanel({
 
   if (activeDialog === "order" && result.status === "ready") {
     return (
-      <aside className="relative z-10 rounded-[28px] border border-white/58 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-5 text-[#173862] shadow-[0_28px_80px_rgba(28,78,160,0.22)] backdrop-blur-[18px] sm:p-6 lg:sticky lg:top-8 lg:mt-[132px]">
+      <aside className="h-fit rounded-[32px] border border-white/62 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-4 text-[#173862] shadow-[0_28px_80px_rgba(28,78,160,0.2)] backdrop-blur-[20px]">
         <OrderRequestDialog from={from} onClose={() => setActiveDialog(null)} result={result} to={to} />
       </aside>
     );
@@ -640,18 +669,18 @@ function ResultPanel({
 
   if (activeDialog === "request" && specialDetails) {
     return (
-      <aside className="relative z-10 rounded-[28px] border border-white/58 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-5 text-[#173862] shadow-[0_28px_80px_rgba(28,78,160,0.22)] backdrop-blur-[18px] sm:p-6 lg:sticky lg:top-8 lg:mt-[132px]">
+      <aside className="h-fit rounded-[32px] border border-white/62 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-4 text-[#173862] shadow-[0_28px_80px_rgba(28,78,160,0.2)] backdrop-blur-[20px]">
         <RequestDialog from={from} onClose={() => setActiveDialog(null)} result={result} to={to} />
       </aside>
     );
   }
 
   return (
-    <aside className="relative z-10 rounded-[28px] border border-white/58 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-5 text-[#173862] shadow-[0_28px_80px_rgba(28,78,160,0.22)] backdrop-blur-[18px] sm:p-6 lg:sticky lg:top-8 lg:mt-[132px]">
+    <aside className="h-fit rounded-[32px] border border-white/62 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-4 text-[#173862] shadow-[0_28px_80px_rgba(28,78,160,0.2)] backdrop-blur-[20px]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#4d78b8]">Итого к оплате</p>
-          <h2 className="mt-2 text-4xl font-black text-[#173862]">
+          <h2 className="mt-1.5 text-3xl font-black text-[#173862]">
             {result.status === "ready" ? formatMoney(result.total) : "—"}
           </h2>
         </div>
@@ -660,7 +689,7 @@ function ResultPanel({
         </span>
       </div>
 
-      <div className="mt-5 rounded-2xl bg-white/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.86)]">
+      <div className="mt-3 rounded-2xl bg-white/70 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.86)]">
         <div className="text-sm font-bold text-[#6f87ac]">Маршрут</div>
         <div className="mt-1 text-lg font-black text-[#173862]">
           {getCityLabel(from)} → {getCityLabel(to)}
@@ -670,7 +699,7 @@ function ResultPanel({
             {result.term}
           </div>
         ) : null}
-        <div className="mt-4 grid gap-2 text-sm font-bold text-[#587295]">
+        <div className="mt-3 grid gap-2 text-sm font-bold text-[#587295]">
           <SelectedDeliveryLine label="Откуда" leg={fromLeg} />
           <SelectedDeliveryLine label="Куда" leg={toLeg} />
         </div>
@@ -678,14 +707,13 @@ function ResultPanel({
 
       {result.status === "ready" ? (
         <>
-          <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="mt-3 grid grid-cols-2 gap-3">
             <Metric label="Расчётный вес" value={`${numberFormatter.format(result.chargeableWeight)} кг`} />
-            <Metric label="Коэффициент" value={`× ${result.coefficient}`} />
             <Metric label="Категория" value={result.band.category} />
             <Metric label="Тариф" value={result.band.label} />
           </div>
 
-          <div className="mt-5 space-y-3">
+          <div className="mt-3 space-y-3">
             <PriceLine label="Перевозка" value={result.transportCost} />
             <PriceLine
               label={`Курьер ${result.courier.destination}${result.courierLegs > 1 ? ` × ${result.courierLegs}` : ""}`}
@@ -1231,24 +1259,28 @@ function TransportSelect({
 function DeliveryModeSelector({
   chargeableWeight,
   city,
+  selectedPickupPoint,
   value,
   onChange,
+  onPickupPointChange,
 }: {
   chargeableWeight: number;
   city: CityKey;
+  selectedPickupPoint: string;
   value: DeliveryMode;
   onChange: (value: DeliveryMode) => void;
+  onPickupPointChange: (value: string) => void;
 }) {
   const options: Array<{ value: DeliveryMode; label: string; available: boolean; reason: string }> = [
-    { value: "pvz", label: "ПВЗ", ...getDeliveryModeAvailability(city, "pvz", chargeableWeight) },
-    { value: "warehouse", label: "Склад", ...getDeliveryModeAvailability(city, "warehouse", chargeableWeight) },
+    { value: "pvz", label: "Пункт выдачи", ...getDeliveryModeAvailability(city, "pvz", chargeableWeight) },
     { value: "courier", label: "Курьер", ...getDeliveryModeAvailability(city, "courier", chargeableWeight) },
   ];
   const unavailableReasons = options.filter((option) => !option.available).map((option) => option.reason);
+  const showPickupPointSelector = value === "pvz" && getDeliveryModeAvailability(city, "pvz", chargeableWeight).available;
 
   return (
     <div className="mt-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {options.map((option) => {
           const isSelected = value === option.value && option.available;
 
@@ -1271,9 +1303,152 @@ function DeliveryModeSelector({
           );
         })}
       </div>
+      {showPickupPointSelector ? (
+        <PickupPointSelector
+          chargeableWeight={chargeableWeight}
+          city={city}
+          value={selectedPickupPoint}
+          onChange={onPickupPointChange}
+        />
+      ) : null}
       {unavailableReasons.length ? (
         <p className="mt-2 text-xs font-bold leading-5 text-[#7891b5]">{unavailableReasons.join(" ")}</p>
       ) : null}
+    </div>
+  );
+}
+
+function PickupPointSelector({
+  chargeableWeight,
+  city,
+  value,
+  onChange,
+}: {
+  chargeableWeight: number;
+  city: CityKey;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const points = cityPickupPoints[city] ?? [];
+  const availablePoints = getAvailablePickupPoints(city, chargeableWeight);
+  const selectedPoint = getSelectedPickupPoint(city, value, chargeableWeight);
+  const selectedKey = selectedPoint ? getPickupPointKey(selectedPoint) : "";
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isOpen]);
+
+  if (!selectedPoint) {
+    return null;
+  }
+
+  if (availablePoints.length <= 1) {
+    return (
+      <div className="mt-2 rounded-2xl border border-[#cfe0f7] bg-white/68 px-3 py-2.5 text-sm font-bold text-[#173862]">
+        <span className="block truncate">{selectedPoint.address}</span>
+        <span className="block text-xs font-black uppercase tracking-[0.08em] text-[#7891b5]">
+          {getPickupPointTypeLabel(selectedPoint)} · {getPickupPointLimitLabel(selectedPoint)}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={rootRef} className="relative mt-2">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-[#cfe0f7] bg-white/68 px-3 py-2.5 text-left text-sm font-bold text-[#173862] transition hover:bg-white"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        <span className="min-w-0">
+          <span className="block truncate">{selectedPoint.address}</span>
+          <span className="block text-xs font-black uppercase tracking-[0.08em] text-[#7891b5]">
+            {getPickupPointTypeLabel(selectedPoint)} · {getPickupPointLimitLabel(selectedPoint)}
+          </span>
+        </span>
+        <span
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#d7e5fb] bg-[linear-gradient(180deg,#f8fbff_0%,#ebf3ff_100%)] text-[#3f74cb] transition ${isOpen ? "rotate-180 border-[#bfd5f7]" : ""}`}
+        >
+          <ChevronDownIcon />
+        </span>
+      </button>
+
+      <div
+        className={`absolute left-0 right-0 top-[calc(100%+10px)] z-30 origin-top rounded-[22px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(235,244,255,0.96)_100%)] p-2 shadow-[0_30px_55px_rgba(24,66,140,0.2)] backdrop-blur-xl transition duration-200 ${isOpen ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-2 opacity-0"}`}
+      >
+        <div className="max-h-72 space-y-1 overflow-y-auto pr-1" role="listbox">
+          {points.map((point) => {
+            const pointKey = getPickupPointKey(point);
+            const selected = pointKey === selectedKey;
+            const available = isPickupPointAvailable(point, chargeableWeight);
+
+            return (
+              <button
+                key={pointKey}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                disabled={!available}
+                className={`flex w-full items-center justify-between gap-3 rounded-[16px] px-3 py-3 text-left transition ${
+                  selected
+                    ? "bg-[linear-gradient(135deg,#4f8fe8_0%,#3e76cf_100%)] text-white shadow-[0_16px_28px_rgba(46,90,175,0.24)]"
+                    : available
+                      ? "bg-white/55 text-[#173862] hover:bg-white/92 hover:shadow-[0_12px_22px_rgba(34,78,154,0.12)]"
+                      : "cursor-not-allowed bg-[#edf2f8]/74 text-[#9aacc7]"
+                }`}
+                onClick={() => {
+                  if (!available) {
+                    return;
+                  }
+
+                  onChange(pointKey);
+                  setIsOpen(false);
+                }}
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-black">{point.address}</span>
+                  <span className={`block text-xs font-black uppercase tracking-[0.08em] ${selected ? "text-white/78" : "text-[#7891b5]"}`}>
+                    {getPickupPointTypeLabel(point)} · {getPickupPointLimitLabel(point)}
+                  </span>
+                </span>
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition ${
+                    selected ? "border-white/35 bg-white/18 text-white" : "border-[#d7e4f7] bg-white/72 text-[#7e95ba]"
+                  }`}
+                >
+                  {selected ? <CheckIcon /> : <DotIcon />}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1310,7 +1485,7 @@ function ResultMessage({ status }: { status: "empty" | "same-route" | "no-route"
         ? "Для выбранного направления нет коэффициента в тарифной матрице."
         : "Введите вес или габариты, чтобы увидеть расчёт.";
 
-  return <div className="mt-5 rounded-2xl bg-white/70 p-4 text-sm font-bold leading-6 text-[#587295]">{message}</div>;
+  return <div className="mt-3 rounded-2xl bg-white/70 p-3 text-sm font-bold leading-6 text-[#587295]">{message}</div>;
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
@@ -1447,8 +1622,8 @@ function ToggleField({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="calculator-field-shell flex items-center gap-3 rounded-[22px] border border-white/58 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(240,246,255,0.9)_100%)] px-4 py-4 text-[#173862] shadow-[0_16px_30px_rgba(28,78,160,0.12),inset_0_1px_0_rgba(255,255,255,0.75)]">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(180deg,#edf5ff_0%,#dce9ff_100%)] text-[#3c75d0] shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
+    <div className="calculator-field-shell flex items-center gap-3 rounded-[22px] border border-white/58 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(240,246,255,0.9)_100%)] px-4 py-2.5 text-[#173862] shadow-[0_16px_30px_rgba(28,78,160,0.12),inset_0_1px_0_rgba(255,255,255,0.75)]">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(180deg,#edf5ff_0%,#dce9ff_100%)] text-[#3c75d0] shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
         {icon}
       </span>
       <div className="min-w-0 flex-1">
@@ -1480,8 +1655,8 @@ function FieldShell({
   children: ReactNode;
 }) {
   return (
-    <div className="calculator-field-shell flex items-center gap-3 rounded-[22px] border border-white/58 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(240,246,255,0.9)_100%)] px-4 py-4 text-[#173862] shadow-[0_16px_30px_rgba(28,78,160,0.12),inset_0_1px_0_rgba(255,255,255,0.75)]">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(180deg,#edf5ff_0%,#dce9ff_100%)] text-[#3c75d0] shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
+    <div className="calculator-field-shell flex items-center gap-3 rounded-[22px] border border-white/58 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(240,246,255,0.9)_100%)] px-4 py-2.5 text-[#173862] shadow-[0_16px_30px_rgba(28,78,160,0.12),inset_0_1px_0_rgba(255,255,255,0.75)]">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(180deg,#edf5ff_0%,#dce9ff_100%)] text-[#3c75d0] shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
         {icon}
       </span>
       <div className="min-w-0 flex-1">
