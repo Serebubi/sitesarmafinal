@@ -91,9 +91,11 @@ type PickupState = {
   senderName: string;
   pickupCode: string;
   sourceUrl: string;
+  additionalInfo: string;
   attachment: File | null;
   bulkyAttachments: File[];
   productAttachment: File | null;
+  termsAccepted: boolean;
   result: OrderRecord | null;
   errors: Record<string, string>;
 };
@@ -125,6 +127,41 @@ const defaultPaidFieldCopy: PaidFieldCopy = {
 };
 
 const paidFieldCopyByMarketplace: Partial<Record<MarketplaceId | SpecialPickupId, PaidFieldCopy>> = {
+  wildberries: {
+    itemCountLabel: "Количество товаров",
+    totalAmountLabel: "Итоговая цена всех товаров",
+    attachmentLabel: "QR-код / штрих-код заказа (нажмите для загрузки)",
+    attachmentHint: "Сделайте скриншот QR-кода или штрих-кода в приложении Wildberries и загрузите его сюда.",
+    attachmentRequiredError: "Прикрепите QR-код или штрих-код заказа.",
+  },
+  ozon: {
+    itemCountLabel: "Количество товаров",
+    totalAmountLabel: "Итоговая цена всех товаров",
+    attachmentLabel: "QR-код / штрих-код заказа (нажмите для загрузки)",
+    attachmentHint: "Сделайте скриншот QR-кода или штрих-кода в приложении Ozon и загрузите его сюда.",
+    attachmentRequiredError: "Прикрепите QR-код или штрих-код заказа.",
+  },
+  yandex_market: {
+    itemCountLabel: "Количество товаров",
+    totalAmountLabel: "Итоговая цена всех товаров",
+    attachmentLabel: "QR-код / штрих-код заказа (нажмите для загрузки)",
+    attachmentHint: "Сделайте скриншот QR-кода или штрих-кода в приложении Яндекс Маркета и загрузите его сюда.",
+    attachmentRequiredError: "Прикрепите QR-код или штрих-код заказа.",
+  },
+  lamoda: {
+    itemCountLabel: "Количество товаров",
+    totalAmountLabel: "Итоговая цена всех товаров",
+    attachmentLabel: "QR-код / штрих-код заказа (нажмите для загрузки)",
+    attachmentHint: "Сделайте скриншот QR-кода или штрих-кода в приложении Lamoda и загрузите его сюда.",
+    attachmentRequiredError: "Прикрепите QR-код или штрих-код заказа.",
+  },
+  avito: {
+    itemCountLabel: "Количество товаров",
+    totalAmountLabel: "Итоговая цена всех товаров",
+    attachmentLabel: "QR-код / штрих-код заказа (нажмите для загрузки)",
+    attachmentHint: "Сделайте скриншот QR-кода или штрих-кода в приложении Авито и загрузите его сюда.",
+    attachmentRequiredError: "Прикрепите QR-код или штрих-код заказа.",
+  },
   cdek: {
     itemCountLabel: "Введите общее количество товаров для получения:",
     totalAmountLabel: "Укажите, пожалуйста, общую сумму всех товаров в заказе:",
@@ -146,33 +183,26 @@ const paidFieldCopyByMarketplace: Partial<Record<MarketplaceId | SpecialPickupId
     attachmentHint: "PNG, JPG или PDF до 10 MB.",
     attachmentRequiredError: "",
   },
-  avito: {
-    itemCountLabel: "Укажите трек-номер",
-    totalAmountLabel: "Код получения",
-    attachmentLabel: "Скриншот отправления (можно пропустить)",
-    attachmentHint: "PNG, JPG или PDF до 10 MB.",
-    attachmentRequiredError: "",
-  },
   goldapple: {
     itemCountLabel: "Количество товаров",
     totalAmountLabel: "Итоговая цена всех товаров",
-    attachmentLabel: "Скриншот заказа",
-    attachmentHint: "PNG, JPG или PDF до 10 MB.",
-    attachmentRequiredError: "Прикрепите скриншот заказа.",
+    attachmentLabel: "Скриншот заказа или QR-код / штрих-код",
+    attachmentHint: "Загрузите скриншот заказа, QR-код или штрих-код из Золотого Яблока.",
+    attachmentRequiredError: "Прикрепите скриншот заказа, QR-код или штрих-код.",
   },
   letual: {
     itemCountLabel: "Количество товаров",
     totalAmountLabel: "Итоговая цена всех товаров",
-    attachmentLabel: "Скриншот заказа",
-    attachmentHint: "PNG, JPG или PDF до 10 MB.",
-    attachmentRequiredError: "Прикрепите скриншот заказа.",
+    attachmentLabel: "Скриншот заказа или QR-код / штрих-код",
+    attachmentHint: "Загрузите скриншот заказа, QR-код или штрих-код из Лэтуаль.",
+    attachmentRequiredError: "Прикрепите скриншот заказа, QR-код или штрих-код.",
   },
   detmir: {
     itemCountLabel: "Количество товаров",
     totalAmountLabel: "Итоговая цена всех товаров",
-    attachmentLabel: "Скриншот заказа",
-    attachmentHint: "PNG, JPG или PDF до 10 MB.",
-    attachmentRequiredError: "Прикрепите скриншот заказа.",
+    attachmentLabel: "QR-код / штрих-код заказа (нажмите для загрузки)",
+    attachmentHint: "Сделайте скриншот QR-кода или штрих-кода заказа Детского Мира и загрузите его сюда.",
+    attachmentRequiredError: "Прикрепите QR-код или штрих-код заказа.",
   },
   courier: {
     itemCountLabel: "Количество товаров",
@@ -287,9 +317,11 @@ function createPickupState(): PickupState {
     senderName: "",
     pickupCode: "",
     sourceUrl: "",
+    additionalInfo: "",
     attachment: null,
     bulkyAttachments: [],
     productAttachment: null,
+    termsAccepted: false,
     result: null,
     errors: {},
   };
@@ -352,6 +384,394 @@ function Field({
 }
 
 const fieldStateLabelClass = "whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--accent-strong)]";
+
+const wildberriesDeliveryTerms = [
+  "Никаких %. Стоимость доставки рассчитывается по общему весу заказа.",
+  "QR-код / штрих-код заказа принимаем ежедневно с 01:00 до 18:00.",
+  "QR-код / штрих-код меняется ежедневно. Мы можем получить ваш заказ только в день, когда вы отправили нам код.",
+  "Возврат товаров осуществляется бесплатно. Невозвратные товары - только по предварительной заявке в приложении.",
+] as const;
+
+const ozonDeliveryTerms = [
+  "Доставка заказов Ozon осуществляется бесплатно.",
+  "QR-код / штрих-код заказа принимаем ежедневно с 01:00 до 18:00.",
+  "QR-код / штрих-код меняется ежедневно. Мы можем получить ваш заказ только в день, когда вы отправили нам код.",
+  "Возврат товаров осуществляется бесплатно. Невозвратные товары - только по предварительной заявке в приложении.",
+] as const;
+
+const linkOrderTerms = [
+  "Комиссия за выкуп - 15% от стоимости заказа.",
+  "Возврат - бесплатно.",
+] as const;
+
+const disclaimerTitle = "Дисклеймер";
+const disclaimerParagraphs = [
+  "Сервис «Сарма Экспресс» является независимой службой доставки. Мы действуем исключительно как посредник, выполняя поручения клиентов по выкупу и транспортировке товаров. Мы не являемся представителем, партнером, агентом или пунктом выдачи заказов Wildberries, OZON, Яндекс Маркет, Lamoda и не аффилированы с ними.",
+  "Все упомянутые на сайте товарные знаки принадлежат их законным правообладателям и используются нами только в информационных целях - для обозначения магазинов, из которых клиент может заказать выкуп товара. «Сарма Экспресс» не осуществляет розничную продажу товаров.",
+] as const;
+
+const wildberriesPickupPointByPickupPointId: Partial<Record<PickupPointId, string>> = {
+  chelyuskintsev_donetsk: "ПВЗ Wildberries Ростов-на-Дону, ул. Вавилова, 68",
+  kubysheva_warehouse: "ПВЗ Wildberries Ростов-на-Дону, ул. Вавилова, 68",
+  mendeleeva_volnovakha: "ПВЗ Wildberries Ростов-на-Дону, ул. Вавилова, 68",
+  ostrovskogo_makeevka: "ПВЗ Wildberries Ростов-на-Дону, ул. Вавилова, 68",
+  pobedy_gorlovka: "ПВЗ Wildberries Ростов-на-Дону, ул. Платона Кляты, 23",
+  internatsionalnaya_gorlovka_warehouse: "ПВЗ Wildberries Ростов-на-Дону, ул. Платона Кляты, 23",
+  gorkogo_melitopol: "ПВЗ Wildberries Ростов-на-Дону, ул. Платона Кляты, 23",
+  grushevskogo_mariupol: "ПВЗ Wildberries Ростов-на-Дону, ул. Платона Кляты, 23",
+};
+
+const ozonPickupPointByPickupPointId: Partial<Record<PickupPointId, string>> = {
+  chelyuskintsev_donetsk: "ПВЗ Ozon Ростов-на-Дону, ул. Платона Кляты, 23",
+  kubysheva_warehouse: "ПВЗ Ozon Ростов-на-Дону, ул. Платона Кляты, 23",
+  mendeleeva_volnovakha: "ПВЗ Ozon Ростов-на-Дону, ул. Вавилова, 68",
+  ostrovskogo_makeevka: "ПВЗ Ozon Ростов-на-Дону, ул. Вавилова, 68",
+  pobedy_gorlovka: "ПВЗ Ozon Ростов-на-Дону, ул. Вавилова, 68",
+  internatsionalnaya_gorlovka_warehouse: "ПВЗ Ozon Ростов-на-Дону, ул. Вавилова, 68",
+  gorkogo_melitopol: "ПВЗ Ozon Ростов-на-Дону, ул. Платона Кляты, 23",
+  grushevskogo_mariupol: "ПВЗ Ozon Ростов-на-Дону, ул. Платона Кляты, 23",
+};
+
+const marketplaceDeliveryPickupPointIds = [
+  "chelyuskintsev_donetsk",
+  "kubysheva_warehouse",
+  "mendeleeva_volnovakha",
+  "ostrovskogo_makeevka",
+  "pobedy_gorlovka",
+  "internatsionalnaya_gorlovka_warehouse",
+  "gorkogo_melitopol",
+  "grushevskogo_mariupol",
+] as const satisfies readonly PickupPointId[];
+
+function createFixedPickupTarget(target: string): Partial<Record<PickupPointId, string>> {
+  return Object.fromEntries(marketplaceDeliveryPickupPointIds.map((id) => [id, target])) as Partial<Record<PickupPointId, string>>;
+}
+
+type MarketplaceInfoIcon = "cart" | "order" | "form" | "delivery";
+type MarketplacePickupGuide = {
+  title: string;
+  subtitle: string;
+  marketplaceName: string;
+  siteName: string;
+  targetByPickupPointId: Partial<Record<PickupPointId, string>>;
+  targetLabel?: string;
+  targetDescription?: string;
+  terms: readonly string[];
+  steps?: Array<{ title: string; description: string; icon: MarketplaceInfoIcon }>;
+  inspectionOption?: string;
+};
+
+const marketplacePickupGuideById: Partial<Record<MarketplaceId, MarketplacePickupGuide>> = {
+  cdek: {
+    title: "Заберём посылку из СДЭК и доставим в нужный город",
+    subtitle: "Отправьте посылку в СДЭК на наш адрес в Ростове-на-Дону, мы её получим и доставим в Донецк, Мариуполь, Луганск или другой населённый пункт.",
+    marketplaceName: "СДЭК",
+    siteName: "cdek.ru",
+    targetByPickupPointId: createFixedPickupTarget("СДЭК Ростов-на-Дону, ул. Вавилова, 69"),
+    targetLabel: "Адрес СДЭК для отправки",
+    targetDescription: "При оформлении отправки СДЭК укажите этот адрес в Ростове-на-Дону. Мы получим посылку там и доставим её в выбранный вами пункт.",
+    terms: [
+      "Оплатите доставку при отправке посылки в СДЭК. Если есть наложенный платёж или доставка не оплачена - оплатите.",
+      "Можем оплатить за вас. В этом случае стоимость услуг СДЭК увеличивается на 10% к стоимости наложенного платежа.",
+      "Не знаете сумму оплаты? Обратитесь в пункт выдачи СДЭК: +7 (909) 436-02-28.",
+    ],
+    steps: [
+      { title: "Оформите отправку", description: "Оформите отправку СДЭК на наш адрес: город Ростов-на-Дону, улица Вавилова, 69.", icon: "cart" },
+      { title: "Укажите получателя", description: "Если есть СДЭК ID, отправляйте на свои данные. Если нет СДЭК ID, получатель: Пинчук Мария Евгеньевна, +7 (949) 513-48-48.", icon: "order" },
+      { title: "После отправления", description: "Получите трек-номер или номер заказа интернет-магазина и код получения, если он есть.", icon: "form" },
+      { title: "Заполните форму ниже", description: "Укажите данные, мы заберём посылку и доставим в нужный город.", icon: "delivery" },
+    ],
+  },
+  wildberries: {
+    title: "Заберём посылку из Wildberries и доставим в нужный населённый пункт",
+    subtitle: "Отправьте посылку в Wildberries на наш адрес в Ростове-на-Дону. Мы её получим и доставим в Донецк, Мариуполь, Луганск или другой населённый пункт.",
+    marketplaceName: "Wildberries",
+    siteName: "wildberries.ru",
+    targetByPickupPointId: wildberriesPickupPointByPickupPointId,
+    terms: wildberriesDeliveryTerms,
+  },
+  ozon: {
+    title: "Заберём посылку из Ozon и доставим в нужный населённый пункт",
+    subtitle: "Отправьте посылку в Ozon на наш адрес в Ростове-на-Дону. Мы её получим и доставим в Донецк, Мариуполь, Луганск или другой населённый пункт.",
+    marketplaceName: "Ozon",
+    siteName: "ozon.ru",
+    targetByPickupPointId: ozonPickupPointByPickupPointId,
+    terms: ozonDeliveryTerms,
+  },
+  yandex_market: {
+    title: "Заберём посылку из Яндекс Маркета и доставим в нужный населённый пункт",
+    subtitle: "Отправьте посылку в Яндекс Маркет на наш адрес в Ростове-на-Дону. Мы её получим и доставим в Донецк, Мариуполь, Луганск или другой населённый пункт.",
+    marketplaceName: "Яндекс Маркет",
+    siteName: "market.yandex.ru",
+    targetByPickupPointId: createFixedPickupTarget("ПВЗ Яндекс Маркет Ростов-на-Дону, ул. Вавилова, 68"),
+    terms: wildberriesDeliveryTerms,
+  },
+  lamoda: {
+    title: "Заберём посылку из Lamoda и доставим в нужный город",
+    subtitle: "Отправьте посылку в Lamoda на наш адрес в Ростове-на-Дону. Мы её получим и доставим в Донецк, Мариуполь, Луганск или другой населённый пункт.",
+    marketplaceName: "Lamoda",
+    siteName: "lamoda.ru",
+    targetByPickupPointId: createFixedPickupTarget("ПВЗ Lamoda Ростов-на-Дону, ул. Таганрогская, 86"),
+    terms: [
+      "Никаких %. Стоимость доставки рассчитывается по общему весу заказа.",
+      "QR-код / штрих-код заказа принимаем пн-пт с 01:00 до 11:00.",
+      "QR-код / штрих-код меняется ежедневно.",
+      "Возврат товаров осуществляется бесплатно. Невозвратные товары - только по предварительной заявке в приложении.",
+    ],
+    inspectionOption: "Хрупкое / Дорогой груз. Важно осмотреть при получении (услуга оплачивается)",
+  },
+  goldapple: {
+    title: "Передайте нам ваш заказ из Золотого Яблока",
+    subtitle: "Отправьте курьера на наш склад, заполните данные заказа, мы заберём его и доставим в Донецк, Мариуполь, Луганск или другой населённый пункт.",
+    marketplaceName: "Золотое Яблоко",
+    siteName: "goldapple.ru",
+    targetByPickupPointId: createFixedPickupTarget("Склад Сарма Экспресс Ростов-на-Дону, ул. Арсенальная, 1"),
+    targetLabel: "Адрес склада для заказа из Золотого Яблока",
+    targetDescription: "На сайте Золотого Яблока или при оформлении доставки курьером укажите этот склад в Ростове-на-Дону. Мы получим заказ и доставим его в выбранный вами пункт.",
+    terms: [
+      "Стоимость доставки рассчитывается по общему весу заказа.",
+      "Приём заказов - ежедневно, без выходных.",
+      "Убедитесь, что ваш заказ оформлен на наш адрес склада. После отправки заполните форму.",
+    ],
+    steps: [
+      { title: "Оформите заказ", description: "Сделайте заказ на goldapple.ru или оформите доставку на наш склад: Ростов-на-Дону, ул. Арсенальная, 1.", icon: "cart" },
+      { title: "Укажите получателя", description: "Получателем укажите себя: имя, фамилию и номер телефона.", icon: "order" },
+      { title: "Заполните форму ниже", description: "Укажите данные заказа и загрузите информацию об отправлении. Сохраните номер заказа или трек-номер.", icon: "form" },
+      { title: "Доставка в ваш город", description: "Мы получим заказ и доставим его в выбранный вами населённый пункт.", icon: "delivery" },
+    ],
+  },
+  letual: {
+    title: "Передайте нам ваш заказ из Лэтуаль",
+    subtitle: "Отправьте курьера на наш склад, заполните данные заказа, мы заберём его и доставим в Донецк, Мариуполь, Луганск или другой населённый пункт.",
+    marketplaceName: "Лэтуаль",
+    siteName: "letu.ru",
+    targetByPickupPointId: createFixedPickupTarget("Склад Сарма Экспресс Ростов-на-Дону, ул. Арсенальная, 1"),
+    targetLabel: "Адрес склада для заказа из Лэтуаль",
+    targetDescription: "На сайте Лэтуаль или при оформлении доставки курьером укажите этот склад в Ростове-на-Дону. Мы получим заказ и доставим его в выбранный вами пункт.",
+    terms: [
+      "Приём заказов - ежедневно, круглосуточно, без выходных.",
+      "Стоимость доставки рассчитывается по общему весу заказа.",
+      "Убедитесь, что ваш заказ оформлен на наш адрес склада. После отправки заполните форму.",
+    ],
+    steps: [
+      { title: "Оформите заказ", description: "Сделайте заказ на letu.ru или оформите доставку на наш склад: Ростов-на-Дону, ул. Арсенальная, 1.", icon: "cart" },
+      { title: "Укажите получателя", description: "Получателем укажите себя: имя, фамилию и номер телефона.", icon: "order" },
+      { title: "Заполните форму ниже", description: "Укажите данные заказа и загрузите информацию об отправлении. Сохраните номер заказа или трек-номер.", icon: "form" },
+      { title: "Доставка в ваш город", description: "Мы получим заказ и доставим его в выбранный вами населённый пункт.", icon: "delivery" },
+    ],
+  },
+  avito: {
+    title: "Заберём посылку из Авито и доставим в нужный населённый пункт",
+    subtitle: "Отправьте посылку в Авито на наш адрес в Ростове-на-Дону. Мы её получим и доставим в Донецк, Мариуполь, Луганск или другой населённый пункт.",
+    marketplaceName: "Авито",
+    siteName: "avito.ru",
+    targetByPickupPointId: createFixedPickupTarget("ПВЗ Авито Ростов-на-Дону, ул. Вавилова, 68"),
+    terms: [
+      "Никаких %. Стоимость доставки рассчитывается по общему весу заказа.",
+      "QR-код / штрих-код заказа принимаем ежедневно с 01:00 до 18:00.",
+      "QR-код / штрих-код меняется ежедневно.",
+      "Хрупкий / дорогой груз (осмотр при получении): +100 ₽ к стоимости заказа за единицу товара.",
+    ],
+    inspectionOption: "Хрупкое / Дорогой груз. Важно осмотреть при получении (услуга оплачивается)",
+  },
+  "5post": {
+    title: "Заберём посылку из 5Post и доставим в нужный населённый пункт",
+    subtitle: "Отправьте посылку в 5Post на наш адрес в Ростове-на-Дону. Мы её получим и доставим в Донецк, Мариуполь, Луганск или другой населённый пункт.",
+    marketplaceName: "5Post",
+    siteName: "5Post",
+    targetByPickupPointId: createFixedPickupTarget("Терминал 5Post Ростов-на-Дону, ул. Таганрогская, 118"),
+    terms: [
+      "Стоимость доставки рассчитывается по общему весу заказа.",
+      "QR-код / штрих-код заказа принимаем пн-пт с 01:00 до 11:00.",
+      "QR-код / штрих-код / код получения меняется ежедневно. Мы можем получить ваш заказ только в день, когда вы отправили нам код.",
+    ],
+    steps: [
+      { title: "Оформите заказ", description: "Отправителю нужно указать правильный адрес терминала 5Post: Ростов-на-Дону, ул. Таганрогская, 118.", icon: "cart" },
+      { title: "Укажите получателя", description: "Получатель: ваше ФИО и ваш телефон.", icon: "order" },
+      { title: "Заполните форму ниже", description: "Укажите данные заказа и загрузите информацию об отправлении. Сохраните номер заказа или трек-номер.", icon: "form" },
+      { title: "Доставка в ваш город", description: "Мы получим заказ и доставим его в выбранный вами населённый пункт.", icon: "delivery" },
+    ],
+  },
+  dpd: {
+    title: "Заберём посылку из DPD и доставим в нужный населённый пункт",
+    subtitle: "Отправьте посылку в DPD на наш адрес в Ростове-на-Дону. Мы её получим и доставим в Донецк, Мариуполь, Луганск или другой населённый пункт.",
+    marketplaceName: "DPD",
+    siteName: "DPD",
+    targetByPickupPointId: createFixedPickupTarget("DPD Ростов-на-Дону, ул. Таганрогская, 132/3"),
+    terms: [
+      "Стоимость доставки рассчитывается по общему весу заказа.",
+      "QR-код / штрих-код заказа принимаем ежедневно с 01:00 до 11:00.",
+    ],
+    steps: [
+      { title: "Оформите отправку DPD", description: "Укажите адрес DPD: Ростов-на-Дону, ул. Таганрогская, 132/3.", icon: "cart" },
+      { title: "Укажите получателя", description: "Получатель: ваше ФИО и телефон.", icon: "order" },
+      { title: "После отправления", description: "Получите трек-номер или номер заказа и код для получения, если он есть.", icon: "form" },
+      { title: "Доставка в ваш город", description: "Мы получим заказ и доставим его в выбранный вами пункт выдачи или доставим курьером.", icon: "delivery" },
+    ],
+  },
+  detmir: {
+    title: "Заберём посылку из Детского Мира и доставим в нужный город",
+    subtitle: "Отправьте посылку в Детский Мир на наш адрес в Ростове-на-Дону. Мы её получим и доставим в Донецк, Мариуполь, Луганск или другой населённый пункт.",
+    marketplaceName: "Детский Мир",
+    siteName: "detmir.ru",
+    targetByPickupPointId: createFixedPickupTarget("ПВЗ Детский Мир Ростов-на-Дону, ул. Таганрогская, 114И, ТЦ «Джанфида»"),
+    terms: [
+      "Приём заказов: пн-пт с 01:00 до 11:00.",
+      "Стоимость доставки рассчитывается по общему весу заказа.",
+    ],
+  },
+};
+
+function MarketplaceStepIcon({ icon }: { icon: MarketplaceInfoIcon }) {
+  const iconClass = "h-9 w-9 fill-none stroke-[#2f7eea]";
+
+  if (icon === "cart") {
+    return (
+      <svg viewBox="0 0 32 32" className={iconClass} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M7 8h3l2.2 12.2a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 1.9-1.4l2.2-7.2H11" />
+        <path d="M15 26.5h.1M24 26.5h.1" />
+      </svg>
+    );
+  }
+
+  if (icon === "order") {
+    return (
+      <svg viewBox="0 0 32 32" className={iconClass} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M16 16a5.3 5.3 0 1 0 0-10.6A5.3 5.3 0 0 0 16 16Z" />
+        <path d="M6.5 27c1.5-5.2 5-8 9.5-8s8 2.8 9.5 8" />
+      </svg>
+    );
+  }
+
+  if (icon === "form") {
+    return (
+      <svg viewBox="0 0 32 32" className={iconClass} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M10 7.5h12a2.5 2.5 0 0 1 2.5 2.5v14a2.5 2.5 0 0 1-2.5 2.5H10A2.5 2.5 0 0 1 7.5 24V10A2.5 2.5 0 0 1 10 7.5Z" />
+        <path d="M12 13h8M12 17h6M12 21h4" />
+        <path d="m21 22.5 4.5-4.5 2 2-4.5 4.5-2.6.6.6-2.6Z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 32 32" className={iconClass} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4.5 10.5h13v12h-13z" />
+      <path d="M17.5 14h4.8l4.2 4.2v4.3h-9" />
+      <path d="M8.5 25.5a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8ZM23.5 25.5a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8Z" />
+      <path d="M7 15h-3M9 19h-5" />
+    </svg>
+  );
+}
+
+function MarketplaceInfoBlock({ guide }: { guide: MarketplacePickupGuide }) {
+  const steps =
+    guide.steps ?? [
+      {
+        title: "Выберите пункт выдачи",
+        description: `Выберите ваш город и адрес получения, затем на ${guide.siteName} укажите подходящий ПВЗ в Ростове-на-Дону.`,
+        icon: "cart" as const,
+      },
+      {
+        title: "Оформите заказ",
+        description: `Ознакомьтесь с ассортиментом, выберите товары и оформите заказ в приложении или на сайте ${guide.marketplaceName}.`,
+        icon: "order" as const,
+      },
+      {
+        title: "Заполните форму ниже",
+        description: `Когда заказ поступит в ПВЗ ${guide.marketplaceName}, найдите QR-код или штрих-код, сделайте скриншот и загрузите его в форму.`,
+        icon: "form" as const,
+      },
+      {
+        title: "Доставка в ваш город",
+        description: "Мы получим заказ и доставим его в выбранный вами пункт выдачи или передадим курьером.",
+        icon: "delivery" as const,
+      },
+    ];
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 lg:grid-cols-4">
+        {steps.map((step, index) => (
+          <div key={step.title} className="relative">
+            <div className="relative flex min-h-[342px] flex-col rounded-[22px] border border-[#dfe9f8] bg-white px-5 pb-5 pt-7 text-[#173862] shadow-[0_18px_40px_rgba(35,88,160,0.08)]">
+              <span className="absolute left-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#1976f3] text-sm font-extrabold text-white shadow-[0_8px_18px_rgba(25,118,243,0.25)]">
+                {index + 1}
+              </span>
+              <span className="mx-auto mt-2 flex h-20 w-20 items-center justify-center rounded-[20px] bg-[#eef6ff]">
+                <MarketplaceStepIcon icon={step.icon} />
+              </span>
+              <h3 className="mt-5 min-h-[56px] text-lg font-extrabold leading-7 text-[#173862]">{step.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-[#516b91]">{step.description}</p>
+            </div>
+            {index < steps.length - 1 ? (
+              <span className="pointer-events-none absolute -right-3 top-1/2 z-10 hidden -translate-y-1/2 text-2xl font-bold text-[#8db7ef] lg:block">
+                →
+              </span>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DisclaimerSummaryBlock({ onOpen }: { onOpen: () => void }) {
+  return (
+    <div className="mt-8 rounded-[28px] border border-[#d7e4f7] bg-white/86 px-5 py-5 text-[#173862] shadow-[0_14px_28px_rgba(39,77,146,0.08)] sm:px-6">
+      <p className="text-xs font-black uppercase tracking-[0.22em] text-[#4677cf]">{disclaimerTitle}</p>
+      <div className="mt-3 space-y-3 text-sm leading-7 text-[#58739d]">
+        {disclaimerParagraphs.map((paragraph) => (
+          <p key={paragraph}>{paragraph}</p>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="mt-4 text-sm font-extrabold text-[#2c6ed3] underline underline-offset-4"
+      >
+        Открыть дисклеймер
+      </button>
+    </div>
+  );
+}
+
+function DisclaimerModal({ onClose }: { onClose: () => void }) {
+  return createPortal(
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[#12315b]/44 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="disclaimer-modal-title">
+      <div className="w-full max-w-[640px] rounded-[28px] border border-[#d7e4f7] bg-[linear-gradient(180deg,#ffffff_0%,#eef6ff_100%)] p-5 text-[#173862] shadow-[0_30px_90px_rgba(8,33,77,0.34)] sm:p-6">
+        <div className="flex items-start justify-between gap-4 border-b border-[#d7e4f7] pb-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#4677cf]">Информационное окно</p>
+            <h2 id="disclaimer-modal-title" className="mt-2 text-2xl font-extrabold text-[#13345f]">{disclaimerTitle}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#c7daf5] bg-white text-xl font-bold text-[#3f74cb] shadow-[0_10px_20px_rgba(39,77,146,0.08)]"
+            aria-label="Закрыть дисклеймер"
+          >
+            ×
+          </button>
+        </div>
+        <div className="mt-5 space-y-4 text-sm leading-7 text-[#58739d]">
+          {disclaimerParagraphs.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+        </div>
+        <div className="mt-6 flex justify-end">
+          <PrimaryButton
+            type="button"
+            onClick={onClose}
+            className="rounded-[20px] bg-[linear-gradient(180deg,#4c8ce6_0%,#3b74cf_100%)] px-7 text-sm font-extrabold shadow-[0_16px_28px_rgba(43,92,180,0.2)]"
+          >
+            Понятно
+          </PrimaryButton>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
 
 function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return (
@@ -1018,10 +1438,10 @@ function isPhoneLookupQuery(query: string) {
   return /^[+\d\s()-]+$/.test(trimmed) && (digits.length === 10 || digits.length === 11);
 }
 
-export function SuperboxApp() {
+export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId } = {}) {
   const searchParams = useSearchParams();
   const requestedFlow = searchParams.get("flow");
-  const [activeFlow, setActiveFlow] = useState<FlowId>(() => resolveFlowFromSearchParam(requestedFlow));
+  const [activeFlow, setActiveFlow] = useState<FlowId>(() => requestedFlow ? resolveFlowFromSearchParam(requestedFlow) : initialFlow);
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [pickupStandard, setPickupStandard] = useState(createPickupState);
   const [pickupPaid, setPickupPaid] = useState(createPickupState);
@@ -1033,6 +1453,8 @@ export function SuperboxApp() {
   const [cancelCandidate, setCancelCandidate] = useState<OrderRecord | null>(null);
   const [cancelResult, setCancelResult] = useState<OrderRecord | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelSupportNoticeVisible, setCancelSupportNoticeVisible] = useState(false);
+  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
   const [pending, startUiTransition] = useTransition();
   const lastScrollYRef = useRef(0);
 
@@ -1046,10 +1468,11 @@ export function SuperboxApp() {
     activePickup.step <= 2 &&
     !activePickup.result;
   const useSarmaLookupChrome = activeFlow === "order_lookup";
+  const useSarmaCancelChrome = activeFlow === "cancel_order";
   const useSarmaBusinessChrome = activeFlow === "business";
   const useSarmaTariffsChrome = activeFlow === "tariffs";
   const useSarmaShipRussiaChrome = activeFlow === "ship_russia";
-  const useSarmaChrome = useSarmaMarketplaceChrome || useSarmaLookupChrome || useSarmaBusinessChrome || useSarmaTariffsChrome || useSarmaShipRussiaChrome;
+  const useSarmaChrome = useSarmaMarketplaceChrome || useSarmaLookupChrome || useSarmaCancelChrome || useSarmaBusinessChrome || useSarmaTariffsChrome || useSarmaShipRussiaChrome;
   const activePickupSourceUrlPlaceholder =
     activePickup.marketplace && activePickup.marketplace in marketplaceExampleUrls
       ? marketplaceExampleUrls[activePickup.marketplace as MarketplaceId]
@@ -1100,8 +1523,8 @@ export function SuperboxApp() {
     });
 
   useEffect(() => {
-    setActiveFlow(resolveFlowFromSearchParam(requestedFlow));
-  }, [requestedFlow]);
+    setActiveFlow(requestedFlow ? resolveFlowFromSearchParam(requestedFlow) : initialFlow);
+  }, [initialFlow, requestedFlow]);
 
   const openFlow = (flow: FlowId) => {
     setActiveFlow(flow);
@@ -1118,33 +1541,7 @@ export function SuperboxApp() {
 
   const paidMarketplaceNotices: Partial<Record<string, ReactNode>> = {
     cdek: (
-      <NoticeBox collapsible>
-        <p>
-          <strong>📍 Оформлять доставку СДЭК по адресу: ул. Вавилова, 69</strong>
-        </p>
-        <p>
-          Получатель: <strong>Гринь Владимир Владиславович</strong>, 79900205973
-        </p>
-        <p className="mt-1">
-          Если подключён <strong>СДЭК ID</strong>: укажите себя получателем, нам предоставьте только трек-номер и код выдачи.
-        </p>
-        <p className="mt-1">
-          ✅ Подключение онлайн за 1 минуту: через Т-банк или онлайн-анкету СДЭК —{" "}
-          <a href="https://www.cdek.ru/ru/cdek-id/#ways" target="_blank" rel="noreferrer" className="underline">
-            cdek.ru/cdek-id
-          </a>
-        </p>
-        <p className="mt-1">
-          🔗 Приложение:{" "}
-          <a href="https://clck.ru/3Phuv5" target="_blank" rel="noreferrer" className="underline">
-            🔍 Google Play
-          </a>
-          {" · "}
-          <a href="https://clck.ru/3Phuy4" target="_blank" rel="noreferrer" className="underline">
-            🍏 App Store
-          </a>
-        </p>
-      </NoticeBox>
+      <MarketplaceInfoBlock guide={marketplacePickupGuideById.cdek!} />
     ),
     courier: (
       <NoticeBox collapsible>
@@ -1167,98 +1564,34 @@ export function SuperboxApp() {
       </NoticeBox>
     ),
     "5post": (
-      <NoticeBox collapsible>
-        <p><strong>❗️ Оформление заказов 5POST</strong></p>
-        <p className="mt-1">📍 Адрес доставки: г. Ростов-на-Дону, ул. Таганрогская, 118.</p>
-        <p className="mt-1">Получатель: <strong>ваши имя, фамилия и номер телефона</strong>.</p>
-        <p className="mt-2 font-semibold">ℹ️ Подробная инструкция:</p>
-        <p className="mt-1">1. Отправителю указать правильный адрес терминала: г. Ростов-на-Дону, ул. Таганрогская, 118.</p>
-        <p className="mt-1">2. При отправлении указать свои данные как получателя груза. Пример: <em>Иванов Иван Иванович, тел: +79490000000</em></p>
-        <p className="mt-1">3. При оформлении заказа вам поступит SMS с номером заказа и кодом получения.</p>
-      </NoticeBox>
+      <MarketplaceInfoBlock guide={marketplacePickupGuideById["5post"]!} />
     ),
     dpd: (
-      <NoticeBox collapsible>
-        <p><strong>❗️ Оформление заказов DPD</strong></p>
-        <p className="mt-1">📍 Адрес доставки: г. Ростов-на-Дону, ул. Таганрогская, 132/3.</p>
-        <p className="mt-1">Получатель: <strong>ваши имя, фамилия и номер телефона</strong>.</p>
-        <p className="mt-2 font-semibold">ℹ️ Подробная инструкция:</p>
-        <p className="mt-1">1. Отправителю указать правильный адрес терминала: г. Ростов-на-Дону, ул. Таганрогская, 132/3.</p>
-        <p className="mt-1">2. При отправлении указать свои данные как получателя груза. Пример: <em>Иванов Иван Иванович, тел: +79490000000</em></p>
-        <p className="mt-1">3. При оформлении заказа вам поступит SMS с номером заказа и кодом получения.</p>
-      </NoticeBox>
+      <MarketplaceInfoBlock guide={marketplacePickupGuideById.dpd!} />
     ),
     avito: (
-      <NoticeBox collapsible>
-        <p>📍 Адрес ПВЗ Avito: г. Ростов-на-Дону, ул. Вавилова, 68.</p>
-        <p className="mt-1">Получатель: <strong>оформляйте на свои данные</strong>.</p>
-        <p className="mt-1">Доставку оформляйте через <strong>«Avito доставку»</strong>: перейдите в раздел «Пункт выдачи», в фильтре выберите Avito, найдите адрес через поиск и выберите этот пункт.</p>
-      </NoticeBox>
+      <MarketplaceInfoBlock guide={marketplacePickupGuideById.avito!} />
     ),
     wildberries: (
-      <NoticeBox>
-        <p>📍 Адрес: г. Ростов-на-Дону, ул. Платона Кляты, 23.</p>
-        <p className="mt-1">
-          <span className="font-semibold">Стоимость доставки:</span>{" "}
-          <span className="font-semibold">8%</span> от стоимости товаров
-        </p>
-      </NoticeBox>
+      <MarketplaceInfoBlock guide={marketplacePickupGuideById.wildberries!} />
     ),
     detmir: (
-      <NoticeBox>
-        <p>📍 Адрес: г. Ростов-на-Дону, ул. Таганрогская, 114И, ТЦ «Джанфида».</p>
-        <p className="mt-1">Получатель: <strong>ваши имя, фамилия и номер телефона</strong>.</p>
-      </NoticeBox>
+      <MarketplaceInfoBlock guide={marketplacePickupGuideById.detmir!} />
     ),
     letual: (
-      <NoticeBox>
-        <p>📍 Адрес: г. Ростов-на-Дону, ул. Арсенальная 1 Вавилова (71Ж/2).</p>
-        <p className="mt-1">Получатель: <strong>ваши имя, фамилия и номер телефона</strong>.</p>
-        <p className="mt-1">
-          <span className="font-semibold">Стоимость доставки:</span>{" "}
-          <span className="font-semibold">10%</span> от стоимости заказа
-        </p>
-      </NoticeBox>
+      <MarketplaceInfoBlock guide={marketplacePickupGuideById.letual!} />
     ),
     goldapple: (
-      <NoticeBox>
-        <p>📍 Адрес: г. Ростов-на-Дону, ул. Арсенальная 1 Вавилова (71Ж/2).</p>
-        <p className="mt-1">Получатель: <strong>ваши имя, фамилия и номер телефона</strong>.</p>
-        <p className="mt-1">
-          <span className="font-semibold">Стоимость доставки:</span>{" "}
-          <span className="font-semibold">10%</span> от стоимости заказа
-        </p>
-      </NoticeBox>
+      <MarketplaceInfoBlock guide={marketplacePickupGuideById.goldapple!} />
     ),
     lamoda: (
-      <NoticeBox>
-        <p>📍 Адрес ПВЗ: г. Ростов-на-Дону, ул. Таганрогская, 86.</p>
-        <p className="mt-1">Получатель: <strong>ваши имя, фамилия и номер телефона</strong>.</p>
-        <p className="mt-1">
-          <span className="font-semibold">Стоимость доставки:</span>{" "}
-          <span className="font-semibold">10%</span> от стоимости заказа
-        </p>
-      </NoticeBox>
+      <MarketplaceInfoBlock guide={marketplacePickupGuideById.lamoda!} />
     ),
     yandex_market: (
-      <NoticeBox>
-        <p>📍 Адрес: г. Ростов-на-Дону, ул. Таганрогская, 132/3.</p>
-        <p className="mt-1">
-          <span className="font-semibold">Стоимость доставки:</span>{" "}
-          <span className="font-semibold">10%</span> от стоимости заказа
-        </p>
-      </NoticeBox>
+      <MarketplaceInfoBlock guide={marketplacePickupGuideById.yandex_market!} />
     ),
     ozon: (
-      <NoticeBox>
-        <p>📍 Адрес: г. Ростов-на-Дону, ул. Платона Кляты, 23.</p>
-        <p className="mt-1">
-          <span className="font-semibold">Стоимость доставки:</span>{" "}
-          OZON — <span className="font-semibold text-green-700">бесплатно</span>
-          {" · "}
-          OZON Китай — <span className="font-semibold">8%</span>
-        </p>
-      </NoticeBox>
+      <MarketplaceInfoBlock guide={marketplacePickupGuideById.ozon!} />
     ),
   };
 
@@ -1278,11 +1611,20 @@ export function SuperboxApp() {
     const isLetualPaid = activeFlow === "pickup_paid" && activePickup.marketplace === "letual";
     const isCourierPaid = activeFlow === "pickup_paid" && activePickup.marketplace === "courier";
     const isBulkyPaid = activeFlow === "pickup_paid" && activePickup.marketplace === "bulky";
-    const hidesPaidItemAmountFields =
-      activeFlow === "pickup_paid" && (activePickup.marketplace === "wildberries" || activePickup.marketplace === "ozon");
+    const activeMarketplaceGuide =
+      activeFlow === "pickup_paid" && activePickup.marketplace
+        ? marketplacePickupGuideById[activePickup.marketplace as MarketplaceId]
+        : null;
+    const activePickupTargetGuide =
+      activeMarketplaceGuide ??
+      (activeFlow === "pickup_standard" && activePickup.marketplace
+        ? marketplacePickupGuideById[activePickup.marketplace as MarketplaceId]
+        : null);
+    const usesMarketplacePickupGuide = Boolean(activeMarketplaceGuide);
+    const hidesPaidItemAmountFields = usesMarketplacePickupGuide;
     const isTrackingCodePaid =
       activeFlow === "pickup_paid" &&
-      (activePickup.marketplace === "5post" || activePickup.marketplace === "dpd" || activePickup.marketplace === "avito");
+      (activePickup.marketplace === "5post" || activePickup.marketplace === "dpd");
     const usesTrackingPickupFields = isCdekPaid || isTrackingCodePaid;
     const parsed =
       activeFlow === "pickup_standard"
@@ -1295,6 +1637,7 @@ export function SuperboxApp() {
             phone: activePickup.phone,
             size: activePickup.size.trim() || undefined,
             sourceUrl: activePickup.sourceUrl,
+            additionalInfo: activePickup.additionalInfo.trim() || undefined,
           })
         : createPaidPickupOrderSchema.safeParse({
             orderType: activeFlow,
@@ -1308,7 +1651,7 @@ export function SuperboxApp() {
             trackingNumber: usesTrackingPickupFields || isDetmirPaid || isGoldapplePaid || isLetualPaid || isCourierPaid || isBulkyPaid ? activePickup.trackingNumber : undefined,
             shipmentNumber: isCdekPaid ? activePickup.shipmentNumber : undefined,
             senderName: isCourierPaid || isBulkyPaid ? activePickup.senderName : undefined,
-            pickupCode: usesTrackingPickupFields || isDetmirPaid || isCourierPaid || isBulkyPaid ? activePickup.pickupCode : undefined,
+            pickupCode: usesTrackingPickupFields || usesMarketplacePickupGuide || isDetmirPaid || isCourierPaid || isBulkyPaid ? activePickup.pickupCode : undefined,
           });
 
     const nextErrors: Record<string, string> = {};
@@ -1316,8 +1659,18 @@ export function SuperboxApp() {
       for (const issue of parsed.error.issues) nextErrors[String(issue.path[0] ?? "form")] = issue.message;
     }
     if (!activePickup.pickupPoint) nextErrors.pickupPoint = "Выберите пункт выдачи";
+    if (
+      activePickupTargetGuide &&
+      activePickup.pickupPoint &&
+      !activePickupTargetGuide.targetByPickupPointId[activePickup.pickupPoint as PickupPointId]
+    ) {
+      nextErrors.pickupPoint = `Выберите пункт выдачи из списка ${activePickupTargetGuide.marketplaceName}`;
+    }
     if (isBulkyPaid && activePickup.bulkyAttachments.length === 0) nextErrors.attachment = paidFieldCopy.attachmentRequiredError;
     if (activeFlow === "pickup_paid" && !usesTrackingPickupFields && !isBulkyPaid && !activePickup.attachment) nextErrors.attachment = paidFieldCopy.attachmentRequiredError;
+    if ((usesMarketplacePickupGuide || activeFlow === "pickup_standard") && !activePickup.termsAccepted) {
+      nextErrors.termsAccepted = "Подтвердите согласие с условиями доставки, оплаты и договором оферты";
+    }
     if (Object.keys(nextErrors).length > 0) {
       updatePickup({ errors: nextErrors });
       return;
@@ -1333,6 +1686,7 @@ export function SuperboxApp() {
           lastName: activePickup.lastName,
           phone: activePickup.phone,
           size: activeFlow === "pickup_standard" ? activePickup.size.trim() || undefined : undefined,
+          additionalInfo: activeFlow === "pickup_standard" ? activePickup.additionalInfo.trim() || undefined : undefined,
           itemCount:
             activeFlow === "pickup_paid" && !usesTrackingPickupFields && !isBulkyPaid && !hidesPaidItemAmountFields
               ? activePickup.itemCount
@@ -1344,7 +1698,7 @@ export function SuperboxApp() {
           trackingNumber: usesTrackingPickupFields || isDetmirPaid || isGoldapplePaid || isLetualPaid || isCourierPaid || isBulkyPaid ? activePickup.trackingNumber : undefined,
           shipmentNumber: isCdekPaid ? activePickup.shipmentNumber : undefined,
           senderName: isCourierPaid || isBulkyPaid ? activePickup.senderName : undefined,
-          pickupCode: usesTrackingPickupFields || isDetmirPaid || isCourierPaid || isBulkyPaid ? activePickup.pickupCode : undefined,
+          pickupCode: usesTrackingPickupFields || usesMarketplacePickupGuide || isDetmirPaid || isCourierPaid || isBulkyPaid ? activePickup.pickupCode : undefined,
           sourceUrl: activeFlow === "pickup_standard" ? activePickup.sourceUrl : undefined,
           attachment: activeFlow === "pickup_paid" && !isBulkyPaid ? activePickup.attachment ?? undefined : undefined,
           bulkyAttachments: activeFlow === "pickup_paid" && isBulkyPaid ? activePickup.bulkyAttachments : undefined,
@@ -1443,19 +1797,29 @@ export function SuperboxApp() {
     const parsed = numericIdSchema.safeParse(deferredCancelNumber);
     if (!parsed.success) {
       setCancelError(parsed.error.issues[0]?.message ?? "Введите корректный номер");
+      setCancelSupportNoticeVisible(false);
       return;
     }
 
     startUiTransition(async () => {
       try {
         const response = await fetchOrder(parsed.data);
+        if (response.order.status === "CANCELLED" || response.order.status === "COMPLETED") {
+          setCancelCandidate(null);
+          setCancelResult(null);
+          setCancelError("Нет текущих заказов для отмены или неправильно введён номер. Проверьте данные.");
+          setCancelSupportNoticeVisible(false);
+          return;
+        }
         setCancelCandidate(response.order);
         setCancelResult(null);
         setCancelError(null);
+        setCancelSupportNoticeVisible(false);
       } catch (error) {
         setCancelCandidate(null);
         setCancelResult(null);
-        setCancelError(error instanceof Error ? error.message : "Заказ не найден");
+        setCancelError("Нет текущих заказов для отмены или неправильно введён номер. Проверьте данные.");
+        setCancelSupportNoticeVisible(false);
       }
     });
   };
@@ -1469,6 +1833,7 @@ export function SuperboxApp() {
         setCancelCandidate(null);
         setCancelResult(response.order);
         setCancelError(null);
+        setCancelNumber("");
       } catch (error) {
         setCancelError(error instanceof Error ? error.message : "Не удалось отменить заказ");
       }
@@ -1480,8 +1845,6 @@ export function SuperboxApp() {
   const hasDeliveryOrders = delivery.orderNumbers.some((value) => value.trim().length > 0);
 
   const lookupChips = ["#SBX-2049-99", "№ 104587", deferredLookupNumber ? `№ ${deferredLookupNumber}` : null].filter(Boolean);
-  const cancelChips = ["Только активные заказы", deferredCancelNumber ? `Проверяем № ${deferredCancelNumber}` : null].filter(Boolean);
-
   useEffect(() => {
     lastScrollYRef.current = window.scrollY;
     let frame = 0;
@@ -1589,9 +1952,19 @@ export function SuperboxApp() {
     const isLetualPaid = paid && activePickup.marketplace === "letual";
     const isCourierPaid = paid && activePickup.marketplace === "courier";
     const isBulkyPaid = paid && activePickup.marketplace === "bulky";
-    const hidesPaidItemAmountFields = paid && (activePickup.marketplace === "wildberries" || activePickup.marketplace === "ozon");
+    const activeMarketplaceGuide =
+      paid && activePickup.marketplace
+        ? marketplacePickupGuideById[activePickup.marketplace as MarketplaceId]
+        : null;
+    const activePickupTargetGuide =
+      activeMarketplaceGuide ??
+      (!paid && activePickup.marketplace
+        ? marketplacePickupGuideById[activePickup.marketplace as MarketplaceId]
+        : null);
+    const usesMarketplacePickupGuide = Boolean(activeMarketplaceGuide);
+    const hidesPaidItemAmountFields = usesMarketplacePickupGuide;
     const isTrackingCodePaid =
-      paid && (activePickup.marketplace === "5post" || activePickup.marketplace === "dpd" || activePickup.marketplace === "avito");
+      paid && (activePickup.marketplace === "5post" || activePickup.marketplace === "dpd");
     const usesTrackingPickupFields = isCdekPaid || isTrackingCodePaid;
     const isSpecial = paid && (activePickup.marketplace === "courier" || activePickup.marketplace === "bulky");
     const paidFieldCopy = getPaidFieldCopy(activePickup.marketplace);
@@ -1600,6 +1973,46 @@ export function SuperboxApp() {
           ? specialPickupLabels[activePickup.marketplace as SpecialPickupId]
           : humanizeMarketplace(activePickup.marketplace as MarketplaceId))
       : "Ничего не выбрано";
+    const marketplaceOrderPickupPoint =
+      activePickupTargetGuide && activePickup.pickupPoint
+        ? activePickupTargetGuide.targetByPickupPointId[activePickup.pickupPoint as PickupPointId]
+        : null;
+    const marketplacePickupPointMap = activePickupTargetGuide?.targetByPickupPointId ?? null;
+    const availablePickupPointOptions = marketplacePickupPointMap
+      ? pickupPointOptions.filter((pickupPoint) => pickupPoint.id in marketplacePickupPointMap)
+      : pickupPointOptions;
+    const pickupPointField = (
+      <Field
+        label="Пункт выдачи"
+        htmlFor={`${activeFlow}-pickupPoint-modern`}
+        error={activePickup.errors.pickupPoint}
+      >
+        <PickupPointSelect
+          id={`${activeFlow}-pickupPoint-modern`}
+          value={activePickup.pickupPoint}
+          onChange={(pickupPoint) => updatePickup({ pickupPoint: pickupPoint as PickupPointId | "", errors: { ...activePickup.errors, pickupPoint: "" } })}
+          placeholder="Выберите пункт выдачи"
+          variant="sarma"
+          options={availablePickupPointOptions.map((pickupPoint) => ({
+            value: pickupPoint.id,
+            label: `${pickupPoint.label}: ${pickupPoint.address}`,
+            description: `${pickupPoint.hours} · ${pickupPoint.contact}`,
+          }))}
+        />
+      </Field>
+    );
+    const marketplaceOrderPickupPointNotice = marketplaceOrderPickupPoint ? (
+      <div className="rounded-[24px] border border-[#b8d6ff] bg-[linear-gradient(180deg,#ffffff_0%,#eef6ff_100%)] px-5 py-4 text-[#173862] shadow-[0_14px_28px_rgba(39,77,146,0.08)]">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#4677cf]">
+          {activePickupTargetGuide?.targetLabel ?? `Пункт выдачи для заказа на ${activePickupTargetGuide?.marketplaceName}`}
+        </p>
+        <p className="mt-2 text-lg font-extrabold leading-7">{marketplaceOrderPickupPoint}</p>
+        <p className="mt-2 text-sm leading-6 text-[#58739d]">
+          {activePickupTargetGuide?.targetDescription ??
+            `На сайте или в приложении ${activePickupTargetGuide?.marketplaceName} выберите этот ПВЗ в Ростове-на-Дону. Мы получим заказ там и доставим его в выбранный вами пункт.`}
+        </p>
+      </div>
+    ) : null;
 
     if (activePickup.step === 1) {
       if (paid) {
@@ -1659,7 +2072,16 @@ export function SuperboxApp() {
                             return;
                           }
 
-                          updatePickup({ marketplace: option.id, errors: {} });
+                          updatePickup({
+                            marketplace: option.id,
+                            pickupPoint: "",
+                            attachment: null,
+                            trackingNumber: "",
+                            shipmentNumber: "",
+                            pickupCode: "",
+                            termsAccepted: false,
+                            errors: {},
+                          });
                         }}
                         className={`group relative flex min-h-[228px] flex-col items-center overflow-hidden rounded-[28px] border px-5 py-6 text-center transition-all duration-200 ${
                           active
@@ -1708,6 +2130,8 @@ export function SuperboxApp() {
                     </div>
                   </div>
                 ) : null}
+
+                <DisclaimerSummaryBlock onOpen={() => setIsDisclaimerOpen(true)} />
               </div>
             </div>
           </section>
@@ -1747,7 +2171,14 @@ export function SuperboxApp() {
                     <button
                       key={marketplace.id}
                       type="button"
-                      onClick={() => updatePickup({ marketplace: marketplace.id, errors: {} })}
+                      onClick={() =>
+                        updatePickup({
+                          marketplace: marketplace.id,
+                          pickupPoint: "",
+                          termsAccepted: false,
+                          errors: {},
+                        })
+                      }
                       className={`group relative flex min-h-[228px] flex-col items-center overflow-hidden rounded-[28px] border px-5 py-6 text-center transition-all duration-200 ${
                         active
                           ? "border-[#8cb7ff] bg-[linear-gradient(180deg,#ffffff_0%,#edf5ff_100%)] shadow-[0_22px_40px_rgba(68,117,194,0.16)]"
@@ -1798,9 +2229,15 @@ export function SuperboxApp() {
     }
 
     if (activePickup.step === 2) {
-      const pickupStepTitle = paid ? (usesTrackingPickupFields ? "Заполните данные для получения" : "Загрузите код и заполните детали") : "Детали заказа";
+      const pickupStepTitle = activeMarketplaceGuide
+        ? activeMarketplaceGuide.title
+        : paid
+          ? (usesTrackingPickupFields ? "Заполните данные для получения" : "Загрузите код и заполните детали")
+          : "Детали заказа";
       const pickupStepDescription =
-        paid
+        activeMarketplaceGuide
+          ? activeMarketplaceGuide.subtitle
+          : paid
           ? isCdekPaid
             ? "Укажите имя, фамилию, телефон и заполните трек-номер или номер отправления ИМ. Код получения и скриншот отправления можно добавить по желанию."
             : isTrackingCodePaid
@@ -1839,7 +2276,13 @@ export function SuperboxApp() {
               </div>
 
               {paid && activePickup.marketplace ? (
-                <div className="mt-6 rounded-[24px] border border-[#f2d79b] bg-[linear-gradient(180deg,rgba(255,250,236,0.96)_0%,rgba(255,245,214,0.92)_100%)] px-5 py-4 text-sm leading-7 text-[#5c4a1d] shadow-[0_12px_26px_rgba(160,123,35,0.08)]">
+                <div
+                  className={
+                    usesMarketplacePickupGuide
+                      ? "mt-6 rounded-[28px] border border-[#d7e4f7] bg-white/88 p-4 shadow-[0_18px_40px_rgba(39,77,146,0.1)]"
+                      : "mt-6 rounded-[24px] border border-[#f2d79b] bg-[linear-gradient(180deg,rgba(255,250,236,0.96)_0%,rgba(255,245,214,0.92)_100%)] px-5 py-4 text-sm leading-7 text-[#5c4a1d] shadow-[0_12px_26px_rgba(160,123,35,0.08)]"
+                  }
+                >
                   {paidMarketplaceNotices[activePickup.marketplace]}
                 </div>
               ) : null}
@@ -1854,6 +2297,17 @@ export function SuperboxApp() {
             <div className="rounded-[24px] border border-white/65 bg-[linear-gradient(180deg,#ffffff_0%,#eef5ff_100%)] px-5 py-4 text-sm leading-7 text-[#5f789d] shadow-[0_14px_28px_rgba(39,77,146,0.08)]">
               Выбран маркетплейс: <span className="font-semibold text-[#13345f]">{currentMarketplace}</span>
             </div>
+            {usesMarketplacePickupGuide ? (
+              <>
+                {pickupPointField}
+                {marketplaceOrderPickupPointNotice}
+              </>
+            ) : null}
+            {usesMarketplacePickupGuide ? (
+              <div className="rounded-[24px] border border-[#d7e4f7] bg-white/80 px-5 py-4 shadow-[0_14px_28px_rgba(39,77,146,0.08)]">
+                <p className="text-lg font-extrabold text-[#13345f]">Укажите ваши данные для получения посылки:</p>
+              </div>
+            ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Имя" htmlFor={`${activeFlow}-firstName`} error={activePickup.errors.firstName}>
                 <Input id={`${activeFlow}-firstName`} autoFocus placeholder="Введите имя" value={activePickup.firstName} onChange={(event) => updatePickup({ firstName: event.target.value })} />
@@ -1871,7 +2325,7 @@ export function SuperboxApp() {
               <>
                 <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-start">
                   <Field
-                    label="Укажите трек-номер"
+                    label="Трек-номер / номер отправления"
                     htmlFor={`${activeFlow}-trackingNumber`}
                     hint="11 цифр, не больше, не меньше"
                     error={activePickup.errors.trackingNumber}
@@ -1890,13 +2344,13 @@ export function SuperboxApp() {
                     или
                   </div>
                   <Field
-                    label="Номер отправления ИМ"
+                    label="Номер заказа интернет-магазина"
                     htmlFor={`${activeFlow}-shipmentNumber`}
                     hint={
                       <>
                         <span className="block font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)]">Без маски</span>
                         <span className="block">
-                          Данное поле заполняется, если нет трек-номера СДЭК в формате "10243258828", есть только номер отправления интернет-магазина, например зарубежные посылки "CN0016355297RU9".
+                          Заполните это поле, если нет трек-номера СДЭК, но есть номер заказа или отправления интернет-магазина.
                         </span>
                       </>
                     }
@@ -1904,7 +2358,7 @@ export function SuperboxApp() {
                   >
                     <Input
                       id={`${activeFlow}-shipmentNumber`}
-                      placeholder="Введите номер отправления ИМ"
+                      placeholder="Введите номер заказа интернет-магазина"
                       value={activePickup.shipmentNumber}
                       onChange={(event) => updatePickup({ shipmentNumber: event.target.value })}
                     />
@@ -1960,15 +2414,28 @@ export function SuperboxApp() {
             ) : isTrackingCodePaid ? (
               <>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Укажите трек-номер" htmlFor={`${activeFlow}-trackingNumber`} error={activePickup.errors.trackingNumber}>
+                  <Field label={isCdekPaid ? "Укажите трек-номер" : activePickup.marketplace === "dpd" ? "Трек-номер / номер заказа" : "Укажите трек-номер"} htmlFor={`${activeFlow}-trackingNumber`} error={activePickup.errors.trackingNumber}>
                     <Input
                       id={`${activeFlow}-trackingNumber`}
-                      placeholder="Введите трек-номер"
+                      placeholder={activePickup.marketplace === "dpd" ? "Введите трек-номер или номер заказа" : "Введите трек-номер"}
                       value={activePickup.trackingNumber}
                       onChange={(event) => updatePickup({ trackingNumber: event.target.value })}
                     />
                   </Field>
-                  <Field label="Код получения" htmlFor={`${activeFlow}-pickupCode`} error={activePickup.errors.pickupCode}>
+                  <Field
+                    label={
+                      activePickup.marketplace === "dpd" ? (
+                        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <span>Код для получения</span>
+                          <span className={fieldStateLabelClass}>При наличии</span>
+                        </span>
+                      ) : (
+                        "Код получения"
+                      )
+                    }
+                    htmlFor={`${activeFlow}-pickupCode`}
+                    error={activePickup.errors.pickupCode}
+                  >
                     <Input
                       id={`${activeFlow}-pickupCode`}
                       placeholder="Введите код получения"
@@ -1978,20 +2445,22 @@ export function SuperboxApp() {
                   </Field>
                 </div>
 
-                <Field label={paidFieldCopy.attachmentLabel} htmlFor={`${activeFlow}-attachment`} hint={paidFieldCopy.attachmentHint} error={activePickup.errors.attachment}>
-                  <FileUploadCard
-                    id={`${activeFlow}-attachment`}
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    file={activePickup.attachment}
-                    variant="sarma"
-                    onChange={(file) => updatePickup({ attachment: file })}
-                  />
-                </Field>
+                {activePickup.marketplace === "5post" ? (
+                  <Field label={paidFieldCopy.attachmentLabel} htmlFor={`${activeFlow}-attachment`} hint={paidFieldCopy.attachmentHint} error={activePickup.errors.attachment}>
+                    <FileUploadCard
+                      id={`${activeFlow}-attachment`}
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      file={activePickup.attachment}
+                      variant="sarma"
+                      onChange={(file) => updatePickup({ attachment: file })}
+                    />
+                  </Field>
+                ) : null}
               </>
             ) : paid ? (
               <>
                 {isDetmirPaid ? (
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className={usesMarketplacePickupGuide ? "mx-auto max-w-[430px]" : "grid gap-4 sm:grid-cols-2"}>
                     <Field
                       label={
                         <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -2011,12 +2480,57 @@ export function SuperboxApp() {
                         onChange={(event) => updatePickup({ trackingNumber: event.target.value })}
                       />
                     </Field>
+                    {!usesMarketplacePickupGuide ? (
+                      <Field
+                        label={
+                          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span>Код получения</span>
+                            <span className={fieldStateLabelClass}>
+                              Не обязательное поле
+                            </span>
+                          </span>
+                        }
+                        htmlFor={`${activeFlow}-pickupCode`}
+                        error={activePickup.errors.pickupCode}
+                      >
+                        <Input
+                          id={`${activeFlow}-pickupCode`}
+                          placeholder="Введите код получения"
+                          value={activePickup.pickupCode}
+                          onChange={(event) => updatePickup({ pickupCode: event.target.value })}
+                        />
+                      </Field>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {isGoldapplePaid ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <Field
                       label={
-                        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center sm:justify-start sm:text-left">
+                          <span>Номер заказа</span>
+                          <span className={fieldStateLabelClass}>
+                            Если есть
+                          </span>
+                        </span>
+                      }
+                      htmlFor={`${activeFlow}-trackingNumber`}
+                      error={activePickup.errors.trackingNumber}
+                    >
+                      <Input
+                        id={`${activeFlow}-trackingNumber`}
+                        placeholder="Введите номер заказа"
+                        value={activePickup.trackingNumber}
+                        onChange={(event) => updatePickup({ trackingNumber: event.target.value })}
+                      />
+                    </Field>
+                    <Field
+                      label={
+                        <span className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center sm:justify-start sm:text-left">
                           <span>Код получения</span>
                           <span className={fieldStateLabelClass}>
-                            Не обязательное поле
+                            Если есть
                           </span>
                         </span>
                       }
@@ -2033,14 +2547,14 @@ export function SuperboxApp() {
                   </div>
                 ) : null}
 
-                {isGoldapplePaid ? (
-                  <div className="mx-auto max-w-[430px]">
+                {isLetualPaid ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <Field
                       label={
                         <span className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center sm:justify-start sm:text-left">
                           <span>Номер заказа</span>
                           <span className={fieldStateLabelClass}>
-                            Обязательное поле
+                            Если есть
                           </span>
                         </span>
                       }
@@ -2054,28 +2568,23 @@ export function SuperboxApp() {
                         onChange={(event) => updatePickup({ trackingNumber: event.target.value })}
                       />
                     </Field>
-                  </div>
-                ) : null}
-
-                {isLetualPaid ? (
-                  <div className="mx-auto max-w-[430px]">
                     <Field
                       label={
                         <span className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center sm:justify-start sm:text-left">
-                          <span>Номер заказа</span>
+                          <span>Код получения</span>
                           <span className={fieldStateLabelClass}>
-                            Обязательное поле
+                            Если есть
                           </span>
                         </span>
                       }
-                      htmlFor={`${activeFlow}-trackingNumber`}
-                      error={activePickup.errors.trackingNumber}
+                      htmlFor={`${activeFlow}-pickupCode`}
+                      error={activePickup.errors.pickupCode}
                     >
                       <Input
-                        id={`${activeFlow}-trackingNumber`}
-                        placeholder="Введите номер заказа"
-                        value={activePickup.trackingNumber}
-                        onChange={(event) => updatePickup({ trackingNumber: event.target.value })}
+                        id={`${activeFlow}-pickupCode`}
+                        placeholder="Введите код получения"
+                        value={activePickup.pickupCode}
+                        onChange={(event) => updatePickup({ pickupCode: event.target.value })}
                       />
                     </Field>
                   </div>
@@ -2346,24 +2855,139 @@ export function SuperboxApp() {
               </>
             )}
 
-            <Field
-              label="Пункт выдачи"
-              htmlFor={`${activeFlow}-pickupPoint-modern`}
-              error={activePickup.errors.pickupPoint}
-            >
-              <PickupPointSelect
-                id={`${activeFlow}-pickupPoint-modern`}
-                value={activePickup.pickupPoint}
-                onChange={(pickupPoint) => updatePickup({ pickupPoint: pickupPoint as PickupPointId | "", errors: { ...activePickup.errors, pickupPoint: "" } })}
-                placeholder="Выберите пункт выдачи"
-                variant="sarma"
-                options={pickupPointOptions.map((pickupPoint) => ({
-                  value: pickupPoint.id,
-                  label: `${pickupPoint.label}: ${pickupPoint.address}`,
-                  description: `${pickupPoint.hours} · ${pickupPoint.contact}`,
-                }))}
-              />
-            </Field>
+            {!usesMarketplacePickupGuide ? (
+              <>
+                {pickupPointField}
+                {!paid ? marketplaceOrderPickupPointNotice : null}
+              </>
+            ) : null}
+
+            {!paid ? (
+              <Field
+                label={
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span>Дополнительная информация</span>
+                    <span className={fieldStateLabelClass}>По желанию</span>
+                  </span>
+                }
+                htmlFor={`${activeFlow}-additionalInfo`}
+                error={activePickup.errors.additionalInfo}
+              >
+                <Textarea
+                  id={`${activeFlow}-additionalInfo`}
+                  placeholder="Например, цвет, комплектация, комментарий к заказу или замена, если товар закончится"
+                  value={activePickup.additionalInfo}
+                  onChange={(event) => updatePickup({ additionalInfo: event.target.value })}
+                  rows={4}
+                />
+              </Field>
+            ) : null}
+
+            {usesMarketplacePickupGuide ? (
+              <div className="rounded-[24px] border border-[#d7e4f7] bg-white/86 px-5 py-5 text-sm leading-7 text-[#4f6688] shadow-[0_14px_28px_rgba(39,77,146,0.08)]">
+                <p className="font-extrabold text-[#13345f]">Условия доставки и оплаты:</p>
+                <ul className="mt-3 space-y-2">
+                  {(activeMarketplaceGuide?.terms ?? wildberriesDeliveryTerms).map((term) => (
+                    <li key={term} className="flex gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#4c8ce6]" />
+                      <span>{term}</span>
+                    </li>
+                  ))}
+                </ul>
+                {activeMarketplaceGuide?.inspectionOption ? (
+                  <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-[18px] border border-[#d7e4f7] bg-[#f5f9ff] px-4 py-3">
+                    <input type="checkbox" className="mt-1 h-4 w-4 rounded border-[#b7cff4] text-[#3b74cf]" />
+                    <span className="text-sm font-semibold leading-6 text-[#13345f]">{activeMarketplaceGuide.inspectionOption}</span>
+                  </label>
+                ) : null}
+                <div className="mt-4 flex flex-wrap gap-3 text-xs font-semibold text-[#3f74cb]">
+                  <a href="/calculator" className="underline underline-offset-4">
+                    Рассчитать стоимость доставки
+                  </a>
+                  <span className="text-[#9bb0cf]">/</span>
+                  <a href="#" className="underline underline-offset-4">
+                    Договор оферты
+                  </a>
+                  <span className="text-[#9bb0cf]">/</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsDisclaimerOpen(true)}
+                    className="font-semibold text-[#3f74cb] underline underline-offset-4"
+                  >
+                    Дисклеймер
+                  </button>
+                </div>
+                <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-[18px] border border-[#d7e4f7] bg-[#f5f9ff] px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={activePickup.termsAccepted}
+                    onChange={(event) =>
+                      updatePickup({
+                        termsAccepted: event.target.checked,
+                        errors: { ...activePickup.errors, termsAccepted: "" },
+                      })
+                    }
+                    className="mt-1 h-4 w-4 rounded border-[#b7cff4] text-[#3b74cf]"
+                  />
+                  <span className="text-sm font-semibold leading-6 text-[#13345f]">
+                    Я ознакомился(ась) с условиями доставки, оплаты и договором оферты
+                  </span>
+                </label>
+                {activePickup.errors.termsAccepted ? (
+                  <span className="mt-2 block text-xs font-semibold text-[color:var(--danger)]">
+                    {activePickup.errors.termsAccepted}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+
+            {!paid ? (
+              <div className="rounded-[24px] border border-[#d7e4f7] bg-white/86 px-5 py-5 text-sm leading-7 text-[#4f6688] shadow-[0_14px_28px_rgba(39,77,146,0.08)]">
+                <p className="font-extrabold text-[#13345f]">Условия доставки и оплаты:</p>
+                <ul className="mt-3 space-y-2">
+                  {linkOrderTerms.map((term) => (
+                    <li key={term} className="flex gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#4c8ce6]" />
+                      <span>{term}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-4 flex flex-wrap gap-3 text-xs font-semibold text-[#3f74cb]">
+                  <a href="#" className="underline underline-offset-4">
+                    Договор оферты
+                  </a>
+                  <span className="text-[#9bb0cf]">/</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsDisclaimerOpen(true)}
+                    className="font-semibold text-[#3f74cb] underline underline-offset-4"
+                  >
+                    Дисклеймер
+                  </button>
+                </div>
+                <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-[18px] border border-[#d7e4f7] bg-[#f5f9ff] px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={activePickup.termsAccepted}
+                    onChange={(event) =>
+                      updatePickup({
+                        termsAccepted: event.target.checked,
+                        errors: { ...activePickup.errors, termsAccepted: "" },
+                      })
+                    }
+                    className="mt-1 h-4 w-4 rounded border-[#b7cff4] text-[#3b74cf]"
+                  />
+                  <span className="text-sm font-semibold leading-6 text-[#13345f]">
+                    Я ознакомился(ась) с условиями доставки, оплаты и договором оферты
+                  </span>
+                </label>
+                {activePickup.errors.termsAccepted ? (
+                  <span className="mt-2 block text-xs font-semibold text-[color:var(--danger)]">
+                    {activePickup.errors.termsAccepted}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
 
             {/* <Field
               label="Пункт выдачи"
@@ -2400,10 +3024,10 @@ export function SuperboxApp() {
               </SecondaryButton>
               <PrimaryButton
                 type="submit"
-                disabled={pending}
+                disabled={pending || ((usesMarketplacePickupGuide || !paid) && !activePickup.termsAccepted)}
                 className="rounded-[22px] bg-[linear-gradient(180deg,#4c8ce6_0%,#3b74cf_100%)] px-8 text-base font-extrabold shadow-[0_20px_36px_rgba(43,92,180,0.24)]"
               >
-                {pending ? "Создаём..." : "Продолжить"}
+                {pending ? "Создаём..." : usesMarketplacePickupGuide ? "Передать заказ" : !paid ? "Сделать заказ" : "Продолжить"}
               </PrimaryButton>
             </div>
               </form>
@@ -2694,49 +3318,134 @@ export function SuperboxApp() {
   );
 
   const renderCancelFlow = () => (
-    <FlowShell
-      eyebrow=""
-      title="Отменить заказ"
-      description="Сначала ищем заказ по номеру, затем показываем подтверждение. Завершенные и уже отменённые заказы не трогаем."
-      align="center"
-      className="mx-auto max-w-[860px]"
+    <section
+      className="relative overflow-hidden bg-[#4a8de7] bg-cover bg-[position:72%_center] bg-no-repeat"
+      style={{ backgroundImage: "url('/brand/hero-background.png')" }}
     >
-      <div className="space-y-5">
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          {cancelChips.map((chip) => (
-            <span key={chip} className="rounded-full bg-[color:var(--surface-subtle)] px-4 py-2 text-sm font-semibold text-[color:var(--muted)]">
-              {chip}
-            </span>
-          ))}
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(51,114,214,0.96)_0%,rgba(86,148,232,0.82)_34%,rgba(150,198,248,0.26)_64%,rgba(255,255,255,0)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_24%,rgba(255,255,255,0.54),transparent_17%),linear-gradient(90deg,rgba(255,255,255,0)_46%,rgba(255,255,255,0.72)_100%)]" />
+
+      <div className="relative mx-auto w-full max-w-[1240px] px-4 pb-20 pt-12 lg:px-6 lg:pb-24 lg:pt-16">
+        <div className="mx-auto max-w-[980px] rounded-[36px] border border-white/46 bg-[linear-gradient(180deg,rgba(237,244,255,0.96)_0%,rgba(227,238,252,0.9)_100%)] p-5 text-[#12315b] shadow-[0_30px_80px_rgba(39,77,146,0.18)] backdrop-blur-[20px] sm:p-6 lg:p-8">
+          <div className="flex flex-col gap-5 border-b border-[#d9e5f8] pb-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.22em] text-[#4677cf]">Форма отмены заказа</p>
+              <h1 className="mt-3 text-3xl font-extrabold leading-tight text-[#13345f] sm:text-[2.5rem]">Отменить заказ</h1>
+              <p className="mt-3 max-w-[760px] text-base leading-7 text-[#58739d]">
+                Введите номер заказа, присвоенный после заполнения одной из форм. Мы проверим текущий заказ и попросим подтвердить отмену.
+              </p>
+            </div>
+
+            <div className="inline-flex w-fit items-center rounded-full border border-white/60 bg-white/72 px-5 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-[#5b7eb4] shadow-[0_12px_24px_rgba(39,77,146,0.08)]">
+              Шаг 1 из 3
+            </div>
+          </div>
+
+          <div className="mt-8 grid gap-5">
+            <div className="rounded-[24px] border border-white/65 bg-[linear-gradient(180deg,#ffffff_0%,#eef5ff_100%)] px-5 py-5 shadow-[0_14px_28px_rgba(39,77,146,0.08)]">
+              <Field label="Номер заказа" htmlFor="cancel-order" hint="Введите номер заказа, присвоенный после заполнения одной из форм." error={cancelError ?? undefined}>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Input
+                    id="cancel-order"
+                    placeholder="669281"
+                    inputMode="numeric"
+                    value={cancelNumber}
+                    onChange={(event) => {
+                      setCancelNumber(event.target.value.replace(/[^\d]/g, ""));
+                      setCancelCandidate(null);
+                      setCancelResult(null);
+                      setCancelError(null);
+                      setCancelSupportNoticeVisible(false);
+                    }}
+                    className="flex-1 bg-white shadow-none"
+                  />
+                  <PrimaryButton
+                    type="button"
+                    onClick={() => {
+                      const parsed = numericIdSchema.safeParse(deferredCancelNumber);
+                      if (!parsed.success) {
+                        setCancelError(parsed.error.issues[0]?.message ?? "Введите корректный номер");
+                        return;
+                      }
+                      setCancelSupportNoticeVisible(true);
+                      setCancelError(null);
+                    }}
+                    disabled={pending}
+                    className="rounded-[22px] bg-[linear-gradient(180deg,#4c8ce6_0%,#3b74cf_100%)] px-8 text-base font-extrabold shadow-[0_20px_36px_rgba(43,92,180,0.24)] sm:min-w-[180px]"
+                  >
+                    Продолжить
+                  </PrimaryButton>
+                </div>
+              </Field>
+            </div>
+
+            {cancelSupportNoticeVisible ? (
+              <div className="rounded-[24px] border border-[#b8d6ff] bg-[linear-gradient(180deg,#ffffff_0%,#eef6ff_100%)] px-5 py-5 text-[#173862] shadow-[0_14px_28px_rgba(39,77,146,0.08)]">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#4677cf]">Всплывающее сообщение</p>
+                <p className="mt-3 text-lg font-extrabold leading-7">Если ваш заказ оформлен на нашего получателя, обратитесь в поддержку.</p>
+                <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-[#3f74cb]">
+                  <span>Телефон: +7 (949) 854-27-85</span>
+                  <span className="text-[#9bb0cf]">/</span>
+                  <a href={supportTelegramUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">
+                    Написать в поддержку
+                  </a>
+                </div>
+                <div className="mt-5 flex justify-end">
+                  <PrimaryButton
+                    type="button"
+                    onClick={() => void submitCancelLookup()}
+                    disabled={pending}
+                    className="rounded-[22px] bg-[linear-gradient(180deg,#4c8ce6_0%,#3b74cf_100%)] px-8 text-base font-extrabold shadow-[0_20px_36px_rgba(43,92,180,0.24)]"
+                  >
+                    {pending ? "Проверяем..." : "Продолжить"}
+                  </PrimaryButton>
+                </div>
+              </div>
+            ) : null}
+
+            {cancelCandidate ? (
+              <div className="space-y-4 rounded-[24px] border border-[#d7e4f7] bg-white/86 px-5 py-5 shadow-[0_14px_28px_rgba(39,77,146,0.08)]">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#4677cf]">Проверка номера</p>
+                  <p className="mt-3 text-xl font-extrabold text-[#13345f]">Вы уверены, что хотите отменить заказ?</p>
+                </div>
+                <OrderSummaryCard order={cancelCandidate} compact />
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  <SecondaryButton
+                    type="button"
+                    onClick={() => {
+                      setCancelCandidate(null);
+                      setCancelSupportNoticeVisible(false);
+                    }}
+                    className="rounded-[22px] border-white/70 bg-white/92 px-8 text-[#173862] shadow-[0_14px_28px_rgba(39,77,146,0.08)]"
+                  >
+                    Нет
+                  </SecondaryButton>
+                  <PrimaryButton
+                    type="button"
+                    onClick={() => void submitCancel()}
+                    disabled={pending}
+                    className="rounded-[22px] bg-[linear-gradient(180deg,#ef5353_0%,#d93636_100%)] px-8 text-base font-extrabold shadow-[0_20px_36px_rgba(220,38,38,0.22)]"
+                  >
+                    {pending ? "Отменяем..." : "Да"}
+                  </PrimaryButton>
+                </div>
+              </div>
+            ) : null}
+
+            {cancelResult ? (
+              <div className="space-y-4 rounded-[24px] border border-[#bde7cf] bg-[linear-gradient(180deg,#ffffff_0%,#f0fff6_100%)] px-5 py-5 text-[#173862] shadow-[0_14px_28px_rgba(39,77,146,0.08)]">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#2f9460]">Всплывающее сообщение</p>
+                  <p className="mt-3 text-xl font-extrabold text-[#13345f]">Заказ отменён.</p>
+                </div>
+                <OrderSummaryCard order={cancelResult} compact />
+              </div>
+            ) : null}
+          </div>
         </div>
-        <Field label="Номер заказа" htmlFor="cancel-order" error={cancelError ?? undefined}>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Input
-              id="cancel-order"
-              placeholder="669281"
-              inputMode="numeric"
-              value={cancelNumber}
-              onChange={(event) => setCancelNumber(event.target.value.replace(/[^\d]/g, ""))}
-              className="flex-1 bg-[color:var(--surface-subtle)] shadow-none"
-            />
-            <SecondaryButton onClick={() => void submitCancelLookup()} disabled={pending} className="sm:min-w-[180px]">
-              {pending ? "Проверяем..." : "Найти заказ"}
-            </SecondaryButton>
-          </div>
-        </Field>
-
-        {cancelCandidate ? (
-          <div className="space-y-4">
-            <OrderSummaryCard order={cancelCandidate} compact />
-            <PrimaryButton onClick={() => void submitCancel()} disabled={pending} className="w-full bg-[linear-gradient(135deg,#ff6b6b,#dc2626)] shadow-[0_18px_36px_rgba(220,38,38,0.22)]">
-              {pending ? "Отменяем..." : "Подтвердить отмену"}
-            </PrimaryButton>
-          </div>
-        ) : null}
-
-        {cancelResult ? <OrderSummaryCard order={cancelResult} compact /> : null}
       </div>
-    </FlowShell>
+    </section>
   );
 
   const renderSupportFlow = () => (
@@ -3337,13 +4046,15 @@ export function SuperboxApp() {
           activeItem={
             useSarmaLookupChrome
               ? "tracking"
-              : useSarmaBusinessChrome
-                ? "business"
-                : useSarmaTariffsChrome
-                  ? "tariffs"
-                  : useSarmaShipRussiaChrome
-                    ? "russia"
-                    : "internet-delivery"
+              : useSarmaCancelChrome
+                ? "cancel-order"
+                : useSarmaBusinessChrome
+                  ? "business"
+                  : useSarmaTariffsChrome
+                    ? "tariffs"
+                    : useSarmaShipRussiaChrome
+                      ? "russia"
+                      : "internet-delivery"
           }
         />
       ) : (
@@ -3425,6 +4136,7 @@ export function SuperboxApp() {
 
       <div className={`${useSarmaChrome ? "mt-0 flex-1" : "mt-8 flex-1"}`}>{renderMainContent()}</div>
 
+      {isDisclaimerOpen ? <DisclaimerModal onClose={() => setIsDisclaimerOpen(false)} /> : null}
     </main>
   );
 }

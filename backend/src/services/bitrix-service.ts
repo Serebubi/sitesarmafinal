@@ -50,6 +50,7 @@ type BitrixDealFieldKey =
   | "senderName"
   | "pickupCode"
   | "size"
+  | "additionalInfo"
   | "productTitle"
   | "productAttachmentUrl"
   | "attachmentUrl";
@@ -83,6 +84,7 @@ const bitrixDealFieldEnvMap = {
   senderName: "BITRIX_DEAL_FIELD_SENDER_NAME",
   pickupCode: "BITRIX_DEAL_FIELD_PICKUP_CODE",
   size: "BITRIX_DEAL_FIELD_SIZE",
+  additionalInfo: "BITRIX_DEAL_FIELD_ADDITIONAL_INFO",
   productTitle: "BITRIX_DEAL_FIELD_PRODUCT_TITLE",
   productAttachmentUrl: "BITRIX_DEAL_FIELD_PRODUCT_ATTACHMENT_URL",
   attachmentUrl: "BITRIX_DEAL_FIELD_ATTACHMENT_URL",
@@ -308,6 +310,7 @@ function buildDealFieldEntries(order: OrderRecord, attachmentUrl: string | null,
     { key: "senderName", label: "Отправитель / интернет-магазин", value: order.senderName },
     { key: "pickupCode", label: "Код получения", value: order.pickupCode },
     { key: "size", label: "\u0420\u0430\u0437\u043c\u0435\u0440", value: order.size },
+    { key: "additionalInfo", label: "Дополнительная информация", value: order.additionalInfo },
     { key: "productTitle", label: "Товар", value: order.productPreview?.title ?? null },
     {
       key: "productAttachmentUrl",
@@ -536,6 +539,7 @@ export function mapOrderToBitrixPayload(order: OrderRecord) {
       senderName: order.senderName,
       pickupCode: order.pickupCode,
       size: order.size,
+      additionalInfo: order.additionalInfo,
     },
     pricing: {
       itemCount: order.itemCount,

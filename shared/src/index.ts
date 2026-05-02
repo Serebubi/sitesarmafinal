@@ -311,7 +311,7 @@ export const createPaidPickupOrderSchema = z
       return;
     }
 
-    if (payload.marketplace === "5post" || payload.marketplace === "dpd" || payload.marketplace === "avito") {
+    if (payload.marketplace === "5post" || payload.marketplace === "dpd") {
       if (!payload.firstName) {
         ctx.addIssue({ code: "custom", path: ["firstName"], message: "Укажите имя" });
       }
@@ -321,13 +321,13 @@ export const createPaidPickupOrderSchema = z
       if (!payload.trackingNumber) {
         ctx.addIssue({ code: "custom", path: ["trackingNumber"], message: "Укажите трек-номер" });
       }
-      if (!payload.pickupCode) {
+      if (payload.marketplace === "5post" && !payload.pickupCode) {
         ctx.addIssue({ code: "custom", path: ["pickupCode"], message: "Укажите код получения" });
       }
       return;
     }
 
-    if (payload.marketplace === "detmir" || payload.marketplace === "goldapple" || payload.marketplace === "letual") {
+    if (payload.marketplace === "detmir") {
       if (!payload.firstName) {
         ctx.addIssue({ code: "custom", path: ["firstName"], message: "Укажите имя" });
       }
@@ -337,11 +337,15 @@ export const createPaidPickupOrderSchema = z
       if (!payload.trackingNumber) {
         ctx.addIssue({ code: "custom", path: ["trackingNumber"], message: "Укажите номер заказа" });
       }
-      if (payload.itemCount == null) {
-        ctx.addIssue({ code: "custom", path: ["itemCount"], message: "Укажите количество товаров" });
+      return;
+    }
+
+    if (payload.marketplace === "goldapple" || payload.marketplace === "letual") {
+      if (!payload.firstName) {
+        ctx.addIssue({ code: "custom", path: ["firstName"], message: "Укажите имя" });
       }
-      if (payload.totalAmount == null) {
-        ctx.addIssue({ code: "custom", path: ["totalAmount"], message: "Укажите сумму заказа" });
+      if (!payload.lastName) {
+        ctx.addIssue({ code: "custom", path: ["lastName"], message: "Укажите фамилию" });
       }
       return;
     }
@@ -359,7 +363,13 @@ export const createPaidPickupOrderSchema = z
       return;
     }
 
-    if (payload.marketplace === "wildberries" || payload.marketplace === "ozon") {
+    if (
+      payload.marketplace === "wildberries" ||
+      payload.marketplace === "ozon" ||
+      payload.marketplace === "yandex_market" ||
+      payload.marketplace === "lamoda" ||
+      payload.marketplace === "avito"
+    ) {
       if (!payload.firstName) {
         ctx.addIssue({ code: "custom", path: ["firstName"], message: "Укажите имя" });
       }
@@ -421,6 +431,7 @@ export const createPickupStandardOrderSchema = z.object({
   phone: phoneSchema,
   size: z.string().trim().min(1).max(120, "\u0420\u0430\u0437\u043c\u0435\u0440 \u0441\u043b\u0438\u0448\u043a\u043e\u043c \u0434\u043b\u0438\u043d\u043d\u044b\u0439").optional(),
   sourceUrl: z.string().url("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043a\u043e\u0440\u0440\u0435\u043a\u0442\u043d\u0443\u044e \u0441\u0441\u044b\u043b\u043a\u0443"),
+  additionalInfo: z.string().trim().max(1000, "\u0414\u043e\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u044c\u043d\u0430\u044f \u0438\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f \u0441\u043b\u0438\u0448\u043a\u043e\u043c \u0434\u043b\u0438\u043d\u043d\u0430\u044f").optional(),
 });
 
 export const createHomeDeliveryOrderSchema = z.object({
@@ -483,6 +494,7 @@ export const orderSchema = z.object({
   pickupCode: z.string().trim().min(1).nullable().default(null),
   size: z.string().trim().min(1).nullable().default(null),
   sourceUrl: z.string().url().nullable(),
+  additionalInfo: z.string().trim().min(1).nullable().default(null),
   deliveryAddress: z.string().nullable(),
   deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
   deliveryTimeSlot: homeDeliveryTimeSlotSchema.nullable().default(null),
@@ -544,6 +556,7 @@ export const bitrixPayloadSchema = z.object({
     senderName: z.string().nullable().default(null),
     pickupCode: z.string().nullable().default(null),
     size: z.string().nullable().default(null),
+    additionalInfo: z.string().nullable().default(null),
   }),
   pricing: z.object({
     itemCount: z.number().nullable(),

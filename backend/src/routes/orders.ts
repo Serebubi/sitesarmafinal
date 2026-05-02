@@ -92,8 +92,9 @@ export function createOrderRouter(orderService: OrderService) {
                   phone: body.phone,
                   size: body.size,
                   sourceUrl: body.sourceUrl,
+                  additionalInfo: body.additionalInfo,
                 }
-              : body.marketplace === "cdek" || body.marketplace === "5post" || body.marketplace === "dpd" || body.marketplace === "avito"
+              : body.marketplace === "cdek" || body.marketplace === "5post" || body.marketplace === "dpd"
                 ? {
                     orderType: body.orderType,
                     marketplace: body.marketplace,
@@ -154,7 +155,6 @@ export function createOrderRouter(orderService: OrderService) {
           payload.marketplace !== "cdek" &&
           payload.marketplace !== "5post" &&
           payload.marketplace !== "dpd" &&
-          payload.marketplace !== "avito" &&
           payload.marketplace !== "bulky" &&
           !attachmentFile
         ) {

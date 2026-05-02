@@ -11,6 +11,7 @@ const primaryNavigationItems = [
 const serviceNavigationItems = [
   { key: "internet-delivery", label: "Доставка из интернет-магазинов РФ", href: "/superbox?flow=pickup_paid", icon: CartIcon },
   { key: "russia", label: "Отправления в РФ", href: "/superbox?flow=ship_russia", icon: BoxIcon },
+  { key: "cancel-order", label: "Отмена заказа", href: "/cancel-order", icon: CancelOrderIcon },
   { key: "ltl", label: "Сборные грузы (LTL)", href: "/ltl", icon: StackIcon },
   { key: "ftl", label: "Полная загрузка (FTL)", href: "/ftl", icon: TruckIcon },
 ];
@@ -171,6 +172,16 @@ function TruckIcon() {
       <path d="M4 9h14v11H4z" />
       <path d="M18 13h6l4 4v3H18z" />
       <path d="M9 25a2.5 2.5 0 1 0 0-.01V25Zm14 0a2.5 2.5 0 1 0 0-.01V25Z" />
+    </svg>
+  );
+}
+
+function CancelOrderIcon() {
+  return (
+    <svg viewBox="0 0 32 32" className="h-8 w-8 fill-none stroke-current" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 7h16v20H8z" />
+      <path d="M11 7V5h10v2M12 13h8M12 18h5" />
+      <path d="m21 18 5 5m0-5-5 5" />
     </svg>
   );
 }

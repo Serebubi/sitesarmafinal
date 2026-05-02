@@ -26,6 +26,7 @@ export async function createPickupOrder(payload: {
   senderName?: string;
   pickupCode?: string;
   sourceUrl?: string;
+  additionalInfo?: string;
   attachment?: File;
   bulkyAttachments?: File[];
   productAttachment?: File;
@@ -64,6 +65,9 @@ export async function createPickupOrder(payload: {
   }
   if (payload.sourceUrl) {
     formData.set("sourceUrl", payload.sourceUrl);
+  }
+  if (payload.additionalInfo) {
+    formData.set("additionalInfo", payload.additionalInfo);
   }
   if (payload.attachment) {
     formData.set("attachment", payload.attachment);
