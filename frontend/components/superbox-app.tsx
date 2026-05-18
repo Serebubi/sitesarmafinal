@@ -207,9 +207,9 @@ const paidFieldCopyByMarketplace: Partial<Record<MarketplaceId | SpecialPickupId
   courier: {
     itemCountLabel: "Количество товаров",
     totalAmountLabel: "Итоговая цена всех товаров",
-    attachmentLabel: "QR / штрих-код заказа / скриншот товара или груза",
-    attachmentHint: "PNG, JPG или PDF до 10 MB.",
-    attachmentRequiredError: "Прикрепите QR, штрих-код или скриншот товара.",
+    attachmentLabel: "Скриншот заказа или QR-код / штрих-код",
+    attachmentHint: "Загрузите скриншот заказа, QR-код или штрих-код. PNG, JPG или PDF до 10 MB.",
+    attachmentRequiredError: "Прикрепите скриншот заказа, QR-код или штрих-код.",
   },
   bulky: {
     itemCountLabel: "Количество товаров",
@@ -404,6 +404,14 @@ const linkOrderTerms = [
   "Возврат - бесплатно.",
 ] as const;
 
+const transferOrderTerms = [
+  "Приём заказов - ежедневно, круглосуточно, без выходных.",
+  "Стоимость доставки рассчитывается по общему весу заказа.",
+  "Убедитесь, что ваш заказ оформлен на наш адрес склада и нашего получателя. После отправки заполните форму.",
+  "Если есть наложенный платёж - оплатим за вас (+10% к сумме платежа).",
+  "Хрупкий / дорогой груз (осмотр при получении): +100 ₽ к стоимости заказа за единицу товара.",
+] as const;
+
 const disclaimerTitle = "Дисклеймер";
 const disclaimerParagraphs = [
   "Сервис «Сарма Экспресс» является независимой службой доставки. Мы действуем исключительно как посредник, выполняя поручения клиентов по выкупу и транспортировке товаров. Мы не являемся представителем, партнером, агентом или пунктом выдачи заказов Wildberries, OZON, Яндекс Маркет, Lamoda и не аффилированы с ними.",
@@ -457,8 +465,53 @@ type MarketplacePickupGuide = {
   targetLabel?: string;
   targetDescription?: string;
   terms: readonly string[];
-  steps?: Array<{ title: string; description: string; icon: MarketplaceInfoIcon }>;
+  steps?: Array<{ title: string; description: ReactNode; icon: MarketplaceInfoIcon }>;
   inspectionOption?: string;
+};
+
+const transferOrderGuide: MarketplacePickupGuide = {
+  title: "Передайте нам ваш заказ",
+  subtitle: "Отправьте курьера на наш склад, заполните данные заказа, мы заберём его и доставим в Донецк, Мариуполь, Луганск или другой населённый пункт.",
+  marketplaceName: "другого заказа",
+  siteName: "",
+  targetByPickupPointId: {},
+  terms: transferOrderTerms,
+  steps: [
+    {
+      title: "Оформите заказ",
+      description: (
+        <>
+          Сделайте заказ в интернет-магазине поставщика или оформите доставку на наш склад.
+          <br />
+          Адрес склада: город Ростов-на-Дону, улица Арсенальная, дом 1.
+          <br />
+          График работы: с 10:00 до 21:00, ежедневно без выходных.
+        </>
+      ),
+      icon: "cart",
+    },
+    {
+      title: "Укажите нашего получателя",
+      description: (
+        <>
+          Получатель: Игнатенко Глеб Игоревич
+          <br />
+          Телефон: +7 (989) 500-00-38
+        </>
+      ),
+      icon: "order",
+    },
+    {
+      title: "Заполните форму ниже",
+      description: "Укажите данные заказа и загрузите информацию об отправлении. Сохраните номер заказа или трек-номер.",
+      icon: "form",
+    },
+    {
+      title: "Доставка в ваш город",
+      description: "Мы получим заказ и доставим его в выбранный вами населённый пункт.",
+      icon: "delivery",
+    },
+  ],
 };
 
 const marketplacePickupGuideById: Partial<Record<MarketplaceId, MarketplacePickupGuide>> = {
@@ -477,7 +530,20 @@ const marketplacePickupGuideById: Partial<Record<MarketplaceId, MarketplacePicku
     ],
     steps: [
       { title: "Оформите отправку", description: "Оформите отправку СДЭК на наш адрес: город Ростов-на-Дону, улица Вавилова, 69.", icon: "cart" },
-      { title: "Укажите получателя", description: "Если есть СДЭК ID, отправляйте на свои данные. Если нет СДЭК ID, получатель: Пинчук Мария Евгеньевна, +7 (949) 513-48-48.", icon: "order" },
+      {
+        title: "Укажите получателя",
+        description: (
+          <span className="block space-y-2">
+            <span className="block">
+              <strong className="font-extrabold text-[#173862]">Если есть СДЭК ID:</strong> отправляйте на свои данные.
+            </span>
+            <span className="block">
+              <strong className="font-extrabold text-[#173862]">Если нет СДЭК ID:</strong> получатель: Пинчук Мария Евгеньевна, +7 (949) 513-48-48.
+            </span>
+          </span>
+        ),
+        icon: "order",
+      },
       { title: "После отправления", description: "Получите трек-номер или номер заказа интернет-магазина и код получения, если он есть.", icon: "form" },
       { title: "Заполните форму ниже", description: "Укажите данные, мы заберём посылку и доставим в нужный город.", icon: "delivery" },
     ],
@@ -664,6 +730,7 @@ function MarketplaceStepIcon({ icon }: { icon: MarketplaceInfoIcon }) {
 }
 
 function MarketplaceInfoBlock({ guide }: { guide: MarketplacePickupGuide }) {
+  const [expanded, setExpanded] = useState(false);
   const steps =
     guide.steps ?? [
       {
@@ -689,7 +756,23 @@ function MarketplaceInfoBlock({ guide }: { guide: MarketplacePickupGuide }) {
     ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-between gap-4 rounded-[22px] border border-[#d7e4f7] bg-white px-5 py-4 text-left text-[#173862] shadow-[0_12px_28px_rgba(39,77,146,0.08)] transition hover:border-[#bdd5f5] hover:bg-[#f8fbff] focus:outline-none focus:ring-2 focus:ring-[#2f7eea]/30"
+      >
+        <span>
+          <span className="block text-xs font-black uppercase tracking-[0.2em] text-[#4677cf]">Инструкция</span>
+          <span className="mt-1 block text-lg font-extrabold leading-6">Как оформить доставку из {guide.marketplaceName}</span>
+        </span>
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1976f3] text-xl font-black text-white shadow-[0_8px_18px_rgba(25,118,243,0.22)]">
+          {expanded ? "↑" : "↓"}
+        </span>
+      </button>
+
+      {expanded ? (
       <div className="grid gap-4 lg:grid-cols-4">
         {steps.map((step, index) => (
           <div key={step.title} className="relative">
@@ -711,6 +794,7 @@ function MarketplaceInfoBlock({ guide }: { guide: MarketplacePickupGuide }) {
           </div>
         ))}
       </div>
+      ) : null}
     </div>
   );
 }
@@ -1441,6 +1525,7 @@ function isPhoneLookupQuery(query: string) {
 export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId } = {}) {
   const searchParams = useSearchParams();
   const requestedFlow = searchParams.get("flow");
+  const requestedSection = searchParams.get("section");
   const [activeFlow, setActiveFlow] = useState<FlowId>(() => requestedFlow ? resolveFlowFromSearchParam(requestedFlow) : initialFlow);
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [pickupStandard, setPickupStandard] = useState(createPickupState);
@@ -1526,6 +1611,12 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
     setActiveFlow(requestedFlow ? resolveFlowFromSearchParam(requestedFlow) : initialFlow);
   }, [initialFlow, requestedFlow]);
 
+  useEffect(() => {
+    if (requestedFlow === "pickup_paid" && requestedSection === "marketplaces") {
+      setPickupPaid(createPickupState());
+    }
+  }, [requestedFlow, requestedSection]);
+
   const openFlow = (flow: FlowId) => {
     setActiveFlow(flow);
 
@@ -1535,6 +1626,7 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
     } else {
       url.searchParams.set("flow", flow);
     }
+    url.searchParams.delete("section");
 
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
   };
@@ -1544,14 +1636,7 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
       <MarketplaceInfoBlock guide={marketplacePickupGuideById.cdek!} />
     ),
     courier: (
-      <NoticeBox collapsible>
-        <p><strong>📦 Заказы курьером оформляйте на наш адрес в Ростове:</strong></p>
-        <p className="mt-1">📍 Адрес: г. Ростов-на-Дону, ул. Арсенальная 1 Вавилова (71Ж/2).</p>
-        <p className="mt-1">🔲 Получатель: <strong>Игнатенко Глеб Игоревич</strong></p>
-        <p>📞 Тел. <strong>+7 (989) 500-00-38</strong></p>
-        <p className="mt-1">🗓 График: <strong>с 9:00 до 18:00, ЕЖЕДНЕВНО.</strong></p>
-        <p className="mt-1 text-[10px] italic">Обязательно указывайте график работы для курьера в комментариях.</p>
-      </NoticeBox>
+      <MarketplaceInfoBlock guide={transferOrderGuide} />
     ),
     bulky: (
       <NoticeBox collapsible>
@@ -1621,7 +1706,7 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
         ? marketplacePickupGuideById[activePickup.marketplace as MarketplaceId]
         : null);
     const usesMarketplacePickupGuide = Boolean(activeMarketplaceGuide);
-    const hidesPaidItemAmountFields = usesMarketplacePickupGuide;
+    const hidesPaidItemAmountFields = usesMarketplacePickupGuide || isCourierPaid;
     const isTrackingCodePaid =
       activeFlow === "pickup_paid" &&
       (activePickup.marketplace === "5post" || activePickup.marketplace === "dpd");
@@ -1668,7 +1753,7 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
     }
     if (isBulkyPaid && activePickup.bulkyAttachments.length === 0) nextErrors.attachment = paidFieldCopy.attachmentRequiredError;
     if (activeFlow === "pickup_paid" && !usesTrackingPickupFields && !isBulkyPaid && !activePickup.attachment) nextErrors.attachment = paidFieldCopy.attachmentRequiredError;
-    if ((usesMarketplacePickupGuide || activeFlow === "pickup_standard") && !activePickup.termsAccepted) {
+    if ((usesMarketplacePickupGuide || isCourierPaid || activeFlow === "pickup_standard") && !activePickup.termsAccepted) {
       nextErrors.termsAccepted = "Подтвердите согласие с условиями доставки, оплаты и договором оферты";
     }
     if (Object.keys(nextErrors).length > 0) {
@@ -1935,13 +2020,12 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
   );
 
   const specialPickupLabels: Record<SpecialPickupId, string> = {
-    courier: "Отправлю курьера",
+    courier: "Передать другой заказ",
     bulky: "Крупногабарит",
   };
 
   const specialPickupOptions: Array<{ id: SpecialPickupId; icon: string; label: string; sub: string }> = [
-    { id: "courier", icon: "🚚", label: "Отправлю курьера", sub: "другой заказ" },
-    { id: "bulky", icon: "📦", label: "Крупногабарит", sub: "тяжёлые грузы" },
+    { id: "courier", icon: "📦", label: "Передать другой заказ", sub: "от поставщика или маркетплейса" },
   ];
 
   const renderPickupFlow = () => {
@@ -1962,7 +2046,7 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
         ? marketplacePickupGuideById[activePickup.marketplace as MarketplaceId]
         : null);
     const usesMarketplacePickupGuide = Boolean(activeMarketplaceGuide);
-    const hidesPaidItemAmountFields = usesMarketplacePickupGuide;
+    const hidesPaidItemAmountFields = usesMarketplacePickupGuide || isCourierPaid;
     const isTrackingCodePaid =
       paid && (activePickup.marketplace === "5post" || activePickup.marketplace === "dpd");
     const usesTrackingPickupFields = isCdekPaid || isTrackingCodePaid;
@@ -2020,6 +2104,7 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
           | { kind: "marketplace"; id: MarketplaceId; label: string; asset: string }
           | { kind: "special"; id: SpecialPickupId; label: string; icon: string }
           | { kind: "link"; id: "pickup_standard"; label: string; icon: string }
+          | { kind: "cancel"; id: "cancel_order"; label: string }
         > = [
           ...marketplaces.map((marketplace) => ({
             kind: "marketplace" as const,
@@ -2034,6 +2119,7 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
             icon: option.icon,
           })),
           { kind: "link" as const, id: "pickup_standard", label: "Заказ по ссылке", icon: "🔗" },
+          { kind: "cancel" as const, id: "cancel_order", label: "Отмена заказа" },
         ];
 
         return (
@@ -2060,15 +2146,15 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   {paidSourceOptions.map((option) => {
-                    const active = option.kind !== "link" && activePickup.marketplace === option.id;
+                    const active = option.kind !== "link" && option.kind !== "cancel" && activePickup.marketplace === option.id;
 
                     return (
                       <button
                         key={`${option.kind}-${option.id}`}
                         type="button"
                         onClick={() => {
-                          if (option.kind === "link") {
-                            openFlow("pickup_standard");
+                          if (option.kind === "link" || option.kind === "cancel") {
+                            openFlow(option.id);
                             return;
                           }
 
@@ -2106,6 +2192,13 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
                                 active ? "" : "grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100"
                               }`}
                             />
+                          ) : option.kind === "cancel" ? (
+                            <svg viewBox="0 0 32 32" className="h-16 w-16 fill-none stroke-[#2f7eea]" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M8 7h13l3 3v15.5A2.5 2.5 0 0 1 21.5 28h-11A2.5 2.5 0 0 1 8 25.5Z" />
+                              <path d="M21 7v4h4" />
+                              <path d="M12 15h7M12 19h5" />
+                              <path d="m21.5 20.5 4 4M25.5 20.5l-4 4" />
+                            </svg>
                           ) : (
                             <span className={`text-[3.25rem] ${option.kind === "link" ? "text-[#3f74cb]" : ""}`}>{option.icon}</span>
                           )}
@@ -2278,7 +2371,7 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
               {paid && activePickup.marketplace ? (
                 <div
                   className={
-                    usesMarketplacePickupGuide
+                    usesMarketplacePickupGuide || isCourierPaid
                       ? "mt-6 rounded-[28px] border border-[#d7e4f7] bg-white/88 p-4 shadow-[0_18px_40px_rgba(39,77,146,0.1)]"
                       : "mt-6 rounded-[24px] border border-[#f2d79b] bg-[linear-gradient(180deg,rgba(255,250,236,0.96)_0%,rgba(255,245,214,0.92)_100%)] px-5 py-4 text-sm leading-7 text-[#5c4a1d] shadow-[0_12px_26px_rgba(160,123,35,0.08)]"
                   }
@@ -2606,7 +2699,7 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
                     >
                       <Input
                         id={`${activeFlow}-senderName`}
-                        placeholder="Например, Ривгош, ИП Петров, ООО “Сарма”"
+                        placeholder="Например: Wildberries, Ozon, ООО Ромашка, ИП Петров"
                         value={activePickup.senderName}
                         onChange={(event) => updatePickup({ senderName: event.target.value })}
                       />
@@ -2858,7 +2951,6 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
             {!usesMarketplacePickupGuide ? (
               <>
                 {pickupPointField}
-                {!paid ? marketplaceOrderPickupPointNotice : null}
               </>
             ) : null}
 
@@ -2883,21 +2975,23 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
               </Field>
             ) : null}
 
-            {usesMarketplacePickupGuide ? (
+            {usesMarketplacePickupGuide || isCourierPaid ? (
               <div className="rounded-[24px] border border-[#d7e4f7] bg-white/86 px-5 py-5 text-sm leading-7 text-[#4f6688] shadow-[0_14px_28px_rgba(39,77,146,0.08)]">
                 <p className="font-extrabold text-[#13345f]">Условия доставки и оплаты:</p>
                 <ul className="mt-3 space-y-2">
-                  {(activeMarketplaceGuide?.terms ?? wildberriesDeliveryTerms).map((term) => (
+                  {(isCourierPaid ? transferOrderTerms : activeMarketplaceGuide?.terms ?? wildberriesDeliveryTerms).map((term) => (
                     <li key={term} className="flex gap-2">
                       <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#4c8ce6]" />
                       <span>{term}</span>
                     </li>
                   ))}
                 </ul>
-                {activeMarketplaceGuide?.inspectionOption ? (
+                {activeMarketplaceGuide?.inspectionOption || isCourierPaid ? (
                   <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-[18px] border border-[#d7e4f7] bg-[#f5f9ff] px-4 py-3">
                     <input type="checkbox" className="mt-1 h-4 w-4 rounded border-[#b7cff4] text-[#3b74cf]" />
-                    <span className="text-sm font-semibold leading-6 text-[#13345f]">{activeMarketplaceGuide.inspectionOption}</span>
+                    <span className="text-sm font-semibold leading-6 text-[#13345f]">
+                      {isCourierPaid ? "Хрупкое / Дорогой груз. Важно осмотреть при получении (услуга оплачивается)" : activeMarketplaceGuide?.inspectionOption}
+                    </span>
                   </label>
                 ) : null}
                 <div className="mt-4 flex flex-wrap gap-3 text-xs font-semibold text-[#3f74cb]">
@@ -3024,10 +3118,10 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
               </SecondaryButton>
               <PrimaryButton
                 type="submit"
-                disabled={pending || ((usesMarketplacePickupGuide || !paid) && !activePickup.termsAccepted)}
+                disabled={pending || ((usesMarketplacePickupGuide || isCourierPaid || !paid) && !activePickup.termsAccepted)}
                 className="rounded-[22px] bg-[linear-gradient(180deg,#4c8ce6_0%,#3b74cf_100%)] px-8 text-base font-extrabold shadow-[0_20px_36px_rgba(43,92,180,0.24)]"
               >
-                {pending ? "Создаём..." : usesMarketplacePickupGuide ? "Передать заказ" : !paid ? "Сделать заказ" : "Продолжить"}
+                {pending ? "Создаём..." : usesMarketplacePickupGuide || isCourierPaid ? "Передать заказ" : !paid ? "Сделать заказ" : "Продолжить"}
               </PrimaryButton>
             </div>
               </form>
