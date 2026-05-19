@@ -1480,37 +1480,156 @@ function SuccessState({
   secondaryLabel?: string;
   onSecondary?: () => void;
 }) {
+  const statusLabels: Record<OrderRecord["status"], string> = {
+    CREATED: "Заявка создана",
+    PROCESSING: "В обработке",
+    READY_FOR_PICKUP: "Готово к выдаче",
+    OUT_FOR_DELIVERY: "В пути",
+    COMPLETED: "Завершено",
+    CANCELLED: "Отменено",
+  };
+  const customerName = [order.customer.firstName, order.customer.lastName].filter(Boolean).join(" ") || "Клиент";
+  const isFailed = order.crmSyncState === "failed";
+  const isHomeDelivery = order.orderType === "home_delivery";
+  const primaryStatus = order.crmStageName ?? statusLabels[order.status];
+  const destination = order.deliveryAddress ?? order.pickupAddress;
+  const referenceValue =
+    order.trackingNumber ??
+    order.shipmentNumber ??
+    (order.relatedOrderNumbers.length > 0 ? order.relatedOrderNumbers.join(", ") : order.sourceUrl ? "Ссылка на товар сохранена" : "Будет уточнено оператором");
+  const amountValue = order.totalAmount ? `${order.totalAmount.toLocaleString("ru-RU")} ₽` : isHomeDelivery ? "По тарифу доставки" : "После обработки";
+
   return (
-    <section className="mx-auto max-w-[820px] text-center">
-      <div className="success-orb mx-auto text-3xl">✓</div>
-      <h1 className="mt-8 font-[family-name:var(--font-display)] text-5xl leading-none text-[color:var(--foreground)] sm:text-6xl">{title}</h1>
-      <p className="mt-3 text-lg font-semibold text-[color:var(--muted)]">№ {order.orderNumber}</p>
-      <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-[color:var(--muted)]">{description}</p>
+    <section
+      className="relative -mt-3 min-h-[calc(100vh-92px)] overflow-hidden bg-[#4a8de7] bg-cover bg-[position:72%_center] bg-no-repeat text-[#12315b]"
+      style={{ backgroundImage: "url('/brand/hero-background.png')" }}
+    >
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(51,114,214,0.96)_0%,rgba(86,148,232,0.84)_37%,rgba(157,203,250,0.38)_67%,rgba(255,255,255,0.08)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_20%,rgba(255,255,255,0.72),transparent_18%),linear-gradient(90deg,rgba(255,255,255,0)_45%,rgba(255,255,255,0.74)_100%)]" />
+      <div className="absolute -left-28 top-1/2 h-[580px] w-[580px] -translate-y-1/2 rounded-full border border-white/18" />
+      <div className="absolute -bottom-44 left-12 h-[430px] w-[430px] rounded-full border border-white/18" />
 
-      <div className="mt-8 grid items-start gap-4 md:grid-cols-[1.15fr_0.85fr]">
-        <div className="soft-card rounded-[30px] p-6 text-left">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--accent-strong)]">
-            {order.crmSyncState === "failed" ? "CRM временно недоступна" : "Ваш заказ в обработке"}
-          </p>
-          <p className="mt-3 text-base leading-8 text-[color:var(--muted)]">
-            {order.crmSyncState === "failed"
-              ? "Заказ сохранен локально, но сделка в Bitrix24 пока не создана. Повторите проверку статуса позже или свяжитесь с оператором, если CRM не восстановится."
-              : "Мы уже готовим ваш заказ к следующему этапу. Статус можно проверять без Telegram, прямо в интерфейсе."}
-          </p>
+      <div className="relative mx-auto w-full max-w-[1320px] px-4 pb-16 pt-12 sm:px-6 lg:px-8 lg:pb-20 lg:pt-16">
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
+          <div className="text-white">
+            <div className="inline-flex items-center gap-3 rounded-full border border-white/34 bg-white/14 px-4 py-2 text-sm font-bold backdrop-blur-sm">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#2f7eea] shadow-[0_12px_24px_rgba(18,49,91,0.18)]">
+                <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="m5 12 4 4 10-10" />
+                </svg>
+              </span>
+              {isFailed ? "Заказ сохранён локально" : "Заявка принята"}
+            </div>
+
+            <h1 className="mt-7 max-w-[760px] text-4xl font-extrabold leading-[1.05] drop-shadow-[0_16px_34px_rgba(20,56,120,0.22)] sm:text-5xl lg:text-[4rem]">
+              {title}
+            </h1>
+            <p className="mt-5 max-w-[720px] text-lg font-semibold leading-8 text-white/88 sm:text-xl">{description}</p>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={onPrimary}
+                className="inline-flex min-h-14 items-center justify-center rounded-[22px] bg-white px-7 text-base font-extrabold text-[#245ca8] shadow-[0_20px_38px_rgba(18,49,91,0.24)] hover:-translate-y-0.5 hover:bg-[#f4f8ff]"
+              >
+                {primaryLabel}
+              </button>
+              {secondaryLabel && onSecondary ? (
+                <button
+                  type="button"
+                  onClick={onSecondary}
+                  className="inline-flex min-h-14 items-center justify-center rounded-[22px] border border-white/48 bg-white/12 px-7 text-base font-extrabold text-white shadow-[0_16px_32px_rgba(18,49,91,0.16)] backdrop-blur-sm hover:-translate-y-0.5 hover:bg-white/18"
+                >
+                  {secondaryLabel}
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          <aside className="rounded-[30px] border border-white/52 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(236,245,255,0.94)_100%)] p-5 shadow-[0_30px_80px_rgba(18,49,91,0.2)] backdrop-blur-xl sm:p-6">
+            <div className="flex items-start justify-between gap-5 border-b border-[#d8e6f8] pb-5">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-[#6d88b2]">Номер заказа</p>
+                <p className="mt-2 text-4xl font-extrabold leading-none text-[#123763]">№ {order.orderNumber}</p>
+              </div>
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-[#2f7eea] text-white shadow-[0_14px_28px_rgba(47,126,234,0.28)]">
+                <svg viewBox="0 0 28 28" className="h-7 w-7 fill-none stroke-current" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M7 8h14M7 14h14M7 20h8" />
+                </svg>
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-[22px] bg-white px-4 py-4 shadow-[0_12px_24px_rgba(39,77,146,0.08)]">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#7d95ba]">Статус</p>
+                <p className="mt-2 text-base font-extrabold text-[#173862]">{isFailed ? "CRM временно недоступна" : primaryStatus}</p>
+              </div>
+              <div className="rounded-[22px] bg-white px-4 py-4 shadow-[0_12px_24px_rgba(39,77,146,0.08)]">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#7d95ba]">Сервис</p>
+                <p className="mt-2 text-base font-extrabold text-[#173862]">{humanizeMarketplace(order.marketplace)}</p>
+              </div>
+              <div className="rounded-[22px] bg-white px-4 py-4 shadow-[0_12px_24px_rgba(39,77,146,0.08)]">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#7d95ba]">Клиент</p>
+                <p className="mt-2 text-base font-extrabold text-[#173862]">{customerName}</p>
+                <p className="mt-1 text-sm font-semibold text-[#60789d]">{order.customer.phone}</p>
+              </div>
+              <div className="rounded-[22px] bg-white px-4 py-4 shadow-[0_12px_24px_rgba(39,77,146,0.08)]">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#7d95ba]">Сумма</p>
+                <p className="mt-2 text-base font-extrabold text-[#173862]">{amountValue}</p>
+              </div>
+            </div>
+          </aside>
         </div>
-        <div className="soft-card rounded-[30px] p-6 text-left">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">Маркетплейс</p>
-          <p className="mt-3 text-lg font-semibold text-[color:var(--foreground)]">{humanizeMarketplace(order.marketplace)}</p>
+
+        <div className="mt-8 grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+          <article className="rounded-[30px] border border-white/50 bg-white/95 p-6 text-[#12315b] shadow-[0_28px_70px_rgba(18,49,91,0.16)] backdrop-blur-xl">
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-[#3b74cf]">Что дальше</p>
+            <div className="mt-5 space-y-4">
+              {[
+                isFailed
+                  ? "Заявка сохранена на сайте. Если Bitrix24 не восстановится автоматически, оператор увидит локальный статус."
+                  : "Заявка создана в CRM и передана на обработку оператору.",
+                isHomeDelivery ? "Курьерская доставка будет подготовлена по выбранной дате и интервалу." : "Заказ попадёт в нужную воронку Bitrix24 по выбранному магазину.",
+                "Статус можно проверить по номеру заказа в разделе отслеживания.",
+              ].map((item, index) => (
+                <div key={item} className="flex gap-4">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#edf5ff] text-sm font-extrabold text-[#2f7eea]">
+                    {index + 1}
+                  </span>
+                  <p className="text-sm font-semibold leading-7 text-[#4f6688]">{item}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="rounded-[30px] border border-white/50 bg-white/95 p-6 text-[#12315b] shadow-[0_28px_70px_rgba(18,49,91,0.16)] backdrop-blur-xl">
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-[#3b74cf]">Детали заявки</p>
+            <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-[22px] bg-[#f4f8ff] px-4 py-4">
+                <dt className="text-[10px] font-black uppercase tracking-[0.22em] text-[#7d95ba]">Направление</dt>
+                <dd className="mt-2 text-sm font-extrabold leading-6 text-[#173862]">{destination}</dd>
+              </div>
+              <div className="rounded-[22px] bg-[#f4f8ff] px-4 py-4">
+                <dt className="text-[10px] font-black uppercase tracking-[0.22em] text-[#7d95ba]">
+                  {isHomeDelivery ? "Связанные заказы" : "Трек / номер"}
+                </dt>
+                <dd className="mt-2 text-sm font-extrabold leading-6 text-[#173862]">{referenceValue}</dd>
+              </div>
+              <div className="rounded-[22px] bg-[#f4f8ff] px-4 py-4">
+                <dt className="text-[10px] font-black uppercase tracking-[0.22em] text-[#7d95ba]">Тип заявки</dt>
+                <dd className="mt-2 text-sm font-extrabold leading-6 text-[#173862]">
+                  {isHomeDelivery ? "Доставка на дом" : order.orderType === "pickup_standard" ? "Заказ по ссылке" : "Доставка из интернет-магазина"}
+                </dd>
+              </div>
+              <div className="rounded-[22px] bg-[#f4f8ff] px-4 py-4">
+                <dt className="text-[10px] font-black uppercase tracking-[0.22em] text-[#7d95ba]">Получение</dt>
+                <dd className="mt-2 text-sm font-extrabold leading-6 text-[#173862]">
+                  {isHomeDelivery ? `${order.deliveryDate ?? "Дата уточняется"} · ${order.deliveryTimeSlot ?? "интервал уточняется"}` : order.pickupAddress}
+                </dd>
+              </div>
+            </dl>
+          </article>
         </div>
-      </div>
-
-      <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-        <PrimaryButton onClick={onPrimary}>{primaryLabel}</PrimaryButton>
-        {secondaryLabel && onSecondary ? <SecondaryButton onClick={onSecondary}>{secondaryLabel}</SecondaryButton> : null}
-      </div>
-
-      <div className="mt-8 text-left">
-        <OrderSummaryCard order={order} />
       </div>
     </section>
   );
@@ -1552,12 +1671,23 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
     (activeFlow === "pickup_paid" || activeFlow === "pickup_standard") &&
     activePickup.step <= 2 &&
     !activePickup.result;
+  const useSarmaSuccessChrome = Boolean(
+    ((activeFlow === "pickup_paid" || activeFlow === "pickup_standard") && activePickup.result) ||
+      (activeFlow === "home_delivery" && delivery.result),
+  );
   const useSarmaLookupChrome = activeFlow === "order_lookup";
   const useSarmaCancelChrome = activeFlow === "cancel_order";
   const useSarmaBusinessChrome = activeFlow === "business";
   const useSarmaTariffsChrome = activeFlow === "tariffs";
   const useSarmaShipRussiaChrome = activeFlow === "ship_russia";
-  const useSarmaChrome = useSarmaMarketplaceChrome || useSarmaLookupChrome || useSarmaCancelChrome || useSarmaBusinessChrome || useSarmaTariffsChrome || useSarmaShipRussiaChrome;
+  const useSarmaChrome =
+    useSarmaMarketplaceChrome ||
+    useSarmaSuccessChrome ||
+    useSarmaLookupChrome ||
+    useSarmaCancelChrome ||
+    useSarmaBusinessChrome ||
+    useSarmaTariffsChrome ||
+    useSarmaShipRussiaChrome;
   const activePickupSourceUrlPlaceholder =
     activePickup.marketplace && activePickup.marketplace in marketplaceExampleUrls
       ? marketplaceExampleUrls[activePickup.marketplace as MarketplaceId]

@@ -49,7 +49,9 @@ describe("backend api", () => {
   });
 
   it("creates an order, syncs it to Bitrix, and refreshes status from the deal stage", async () => {
-    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+    let dealPayload: URLSearchParams | null = null;
+
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
       const url = String(input);
 
       if (url.includes("crm.duplicate.findbycomm")) {
@@ -61,6 +63,7 @@ describe("backend api", () => {
       }
 
       if (url.includes("crm.deal.add")) {
+        dealPayload = readFormBody(init?.body);
         return createBitrixResponse(654);
       }
 
@@ -93,8 +96,10 @@ describe("backend api", () => {
     expect(createResponse.body.order.crmSyncState).toBe("synced");
     expect(createResponse.body.order.crmContactId).toBe("321");
     expect(createResponse.body.order.crmDealId).toBe("654");
-    expect(createResponse.body.order.crmStageId).toBe("NEW");
-    expect(createResponse.body.order.crmStageName).toBe("Новые заказы");
+    expect(createResponse.body.order.crmStageId).toBe("C8:NEW");
+    expect(createResponse.body.order.crmStageName).toBe("Новый запрос");
+    expect(dealPayload!.get("fields[CATEGORY_ID]")).toBe("8");
+    expect(dealPayload!.get("fields[STAGE_ID]")).toBe("C8:NEW");
 
     const orderNumber = createResponse.body.order.orderNumber as string;
 
@@ -173,12 +178,12 @@ describe("backend api", () => {
       .field("sourceUrl", "https://www.wildberries.ru/catalog/123/detail.aspx");
 
     expect(createResponse.status).toBe(201);
-    expect(dealPayload?.get("fields[UF_CRM_ORDER_NUMBER]")).toBe(createResponse.body.order.orderNumber);
-    expect(dealPayload?.get("fields[UF_CRM_CUSTOMER_NAME]")).toBe("Ivan Ivanov");
-    expect(dealPayload?.get("fields[UF_CRM_CUSTOMER_PHONE]")).toBe("+79997776655");
-    expect(dealPayload?.get("fields[UF_CRM_SOURCE_URL]")).toBe("https://www.wildberries.ru/catalog/123/detail.aspx");
-    expect(dealPayload?.get("fields[COMMENTS]")).not.toContain("+79997776655");
-    expect(dealPayload?.get("fields[COMMENTS]")).not.toContain("https://www.wildberries.ru/catalog/123/detail.aspx");
+    expect(dealPayload!.get("fields[UF_CRM_ORDER_NUMBER]")).toBe(createResponse.body.order.orderNumber);
+    expect(dealPayload!.get("fields[UF_CRM_CUSTOMER_NAME]")).toBe("Ivan Ivanov");
+    expect(dealPayload!.get("fields[UF_CRM_CUSTOMER_PHONE]")).toBe("+79997776655");
+    expect(dealPayload!.get("fields[UF_CRM_SOURCE_URL]")).toBe("https://www.wildberries.ru/catalog/123/detail.aspx");
+    expect(dealPayload!.get("fields[COMMENTS]")).not.toContain("+79997776655");
+    expect(dealPayload!.get("fields[COMMENTS]")).not.toContain("https://www.wildberries.ru/catalog/123/detail.aspx");
   });
 
   it("keeps pickup standard item count and total amount empty in Bitrix when they are not part of the form", async () => {
@@ -217,15 +222,58 @@ describe("backend api", () => {
       .field("sourceUrl", "https://www.wildberries.ru/catalog/123/detail.aspx");
 
     expect(createResponse.status).toBe(201);
-    expect(dealPayload?.get("fields[UF_CRM_1774909222920]")).toBe(createResponse.body.order.orderNumber);
-    expect(dealPayload?.get("fields[UF_CRM_1774909231523]")).toBe("Самовывоз");
-    expect(dealPayload?.get("fields[UF_CRM_1774909238633]")).toBe("WILDBERRIES");
-    expect(dealPayload?.get("fields[UF_CRM_1774909246381]")).toBe("CREATED");
-    expect(dealPayload?.get("fields[UF_CRM_1774909256492]")).toBe(createResponse.body.order.pickupAddress);
-    expect(dealPayload?.get("fields[UF_CRM_1774908835361]")).toBeNull();
-    expect(dealPayload?.get("fields[UF_CRM_1774908871627]")).toBeNull();
+    expect(dealPayload!.get("fields[UF_CRM_DELIVERY_TYPE]")).toBe("Самовывоз");
+    expect(dealPayload!.get("fields[UF_CRM_RECIPIENT_NAME]")).toBe("Ivan Ivanov");
+    expect(dealPayload!.get("fields[UF_CRM_RECIPIENT_PHONE]")).toBe("+79997776655");
+    expect(dealPayload!.get("fields[UF_CRM_DESTINATION_ADDRESS]")).toBe(createResponse.body.order.pickupAddress);
+    expect(dealPayload!.get("fields[UF_CRM_PLACES_COUNT]")).toBeNull();
     expect(createResponse.body.order.size).toBe("42");
-    expect(dealPayload?.get("fields[COMMENTS]")).toContain("42");
+    expect(dealPayload!.get("fields[COMMENTS]")).toContain(createResponse.body.order.orderNumber);
+    expect(dealPayload!.get("fields[COMMENTS]")).toContain("WILDBERRIES");
+    expect(dealPayload!.get("fields[COMMENTS]")).toContain("42");
+  });
+
+  it("routes paid marketplace orders to their Bitrix funnel and stage", async () => {
+    let dealPayload: URLSearchParams | null = null;
+
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const url = String(input);
+
+      if (url.includes("crm.duplicate.findbycomm")) {
+        return createBitrixResponse({});
+      }
+
+      if (url.includes("crm.contact.add")) {
+        return createBitrixResponse(321);
+      }
+
+      if (url.includes("crm.deal.add")) {
+        dealPayload = readFormBody(init?.body);
+        return createBitrixResponse(654);
+      }
+
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    const app = createApp();
+
+    const createResponse = await request(app)
+      .post("/orders/create")
+      .field("orderType", "pickup_paid")
+      .field("marketplace", "ozon")
+      .field("firstName", "Ivan")
+      .field("lastName", "Ivanov")
+      .field("phone", "+79997776655")
+      .attach("attachment", Buffer.from("barcode file"), "ozon-qr.png");
+
+    expect(createResponse.status).toBe(201);
+    expect(createResponse.body.order.marketplace).toBe("ozon");
+    expect(createResponse.body.order.crmStageId).toBe("C2:PREPARATION");
+    expect(createResponse.body.order.crmStageName).toBe("Заказы Ozon");
+    expect(createResponse.body.order.status).toBe("PROCESSING");
+    expect(dealPayload!.get("fields[CATEGORY_ID]")).toBe("2");
+    expect(dealPayload!.get("fields[STAGE_ID]")).toBe("C2:PREPARATION");
   });
 
   it("creates pickup standard order without item count and total amount", async () => {
@@ -270,7 +318,7 @@ describe("backend api", () => {
 
     expect(createResponse.status).toBe(201);
     expect(createResponse.body.order.pickupPoint).toBe("chelyuskintsev_donetsk");
-    expect(createResponse.body.order.pickupAddress).toBe("Челюскинцев (г. Донецк)");
+    expect(createResponse.body.order.pickupAddress).toBe("Донецк, ПВЗ");
   });
 
   it("creates a home delivery request from existing order numbers", async () => {
@@ -478,7 +526,7 @@ describe("backend api", () => {
     expect(createResponse.body.order.attachment).toBeNull();
   });
 
-  it("creates a paid avito order without attachment", async () => {
+  it("creates a paid avito order with attachment", async () => {
     const fetchMock = vi.fn<typeof fetch>(async (input) => {
       const url = String(input);
 
@@ -508,13 +556,14 @@ describe("backend api", () => {
       .field("lastName", "Ivanov")
       .field("phone", "+79997776655")
       .field("trackingNumber", "AVITO-123456")
-      .field("pickupCode", "6677");
+      .field("pickupCode", "6677")
+      .attach("attachment", Buffer.from("test file"), "avito-order.png");
 
     expect(createResponse.status).toBe(201);
     expect(createResponse.body.order.marketplace).toBe("avito");
     expect(createResponse.body.order.trackingNumber).toBe("AVITO-123456");
     expect(createResponse.body.order.pickupCode).toBe("6677");
-    expect(createResponse.body.order.attachment).toBeNull();
+    expect(createResponse.body.order.attachment.fileName).toBe("avito-order.png");
   });
 
   it("creates a paid detmir order with order number and optional pickup code", async () => {
@@ -793,7 +842,9 @@ describe("backend api", () => {
       senderName: null,
       shipmentNumber: null,
       pickupCode: null,
+      size: null,
       sourceUrl: null,
+      additionalInfo: null,
       deliveryAddress: "Мариуполь, Ленина 1",
       deliveryDate: "2026-03-28",
       deliveryTimeSlot: "12:00-15:00",
