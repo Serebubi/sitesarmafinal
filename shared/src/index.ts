@@ -42,6 +42,20 @@ export const marketplaces = [
     domains: ["wildberries.ru", "www.wildberries.ru"],
   },
   {
+    id: "wildberries_opt",
+    label: "WB ОПТ",
+    asset: "WB ОПТ.png",
+    parserMode: "supported",
+    domains: ["wildberries.ru", "www.wildberries.ru"],
+  },
+  {
+    id: "wildberries_premium",
+    label: "WB Дорогой товар",
+    asset: "WB Дорогостой.png",
+    parserMode: "supported",
+    domains: ["wildberries.ru", "www.wildberries.ru"],
+  },
+  {
     id: "ozon",
     label: "OZON",
     asset: "ozon.png",
@@ -98,6 +112,8 @@ export const marketplaceExampleUrls: Record<MarketplaceId, string> = {
   dpd: "https://market.dpd.ru/product/besprovodnye-naushniki",
   avito: "https://www.avito.ru/moskva/telefony/iphone_15_1234567890",
   wildberries: "https://www.wildberries.ru/catalog/123456789/detail.aspx",
+  wildberries_opt: "https://www.wildberries.ru/catalog/123456789/detail.aspx",
+  wildberries_premium: "https://www.wildberries.ru/catalog/123456789/detail.aspx",
   ozon: "https://www.ozon.ru/product/besprovodnye-naushniki-123456789/",
   yandex_market: "https://market.yandex.ru/product--besprovodnye-naushniki/123456789",
   lamoda: "https://www.lamoda.ru/p/mp002xw0abcd/",
@@ -232,6 +248,52 @@ export const crmSyncStateValues = ["pending", "queued", "synced", "mock_delivere
 export type CrmSyncState = (typeof crmSyncStateValues)[number];
 
 export const bitrixStageLabels = {
+  "C2:NEW": "Новая заявка",
+  "C2:PREPARATION": "Заказы Ozon",
+  "C2:PREPAYMENT_INVOICE": "Заказы Avito",
+  "C2:EXECUTING": "Заказы Яндекс.Маркет",
+  "C2:FINAL_INVOICE": "Собрано на ПВЗ",
+  "C2:AUTO_P01": "Перемещено на склад",
+  "C2:AUTO_P02": "В пути",
+  "C2:WON": "Завершено",
+  "C2:LOSE": "Возврат",
+  "C4:NEW": "Новая заявка",
+  "C4:PREPARATION": "Собрано на ПВЗ",
+  "C4:PREPAYMENT_INVOICE": "Перемещено на склад",
+  "C4:EXECUTING": "В пути",
+  "C4:WON": "Завершено",
+  "C4:LOSE": "Возврат",
+  "C6:NEW": "Новая заявка",
+  "C6:PREPARATION": "Сборка",
+  "C6:PREPAYMENT_INVOICE": "Тяжёлый груз / ожидает доставки",
+  "C6:EXECUTING": "Собрано на ПВЗ",
+  "C6:FINAL_INVOICE": "Перемещено на склад",
+  "C6:AUTO_P01": "В пути",
+  "C6:AUTO_P02": "Продление хранения",
+  "C6:WON": "Завершено",
+  "C6:LOSE": "Возврат",
+  "C8:NEW": "Новый запрос",
+  "C8:PREPARATION": "Выкуп товара",
+  "C8:PREPAYMENT_INVOICE": "Выкуплено",
+  "C8:EXECUTING": "Ожидает прибытия",
+  "C8:FINAL_INVOICE": "Прибыло / размещено",
+  "C8:AUTO_P01": "Готово к выдаче",
+  "C8:AUTO_P02": "Выдано",
+  "C8:AUTO_P03": "Отправлено",
+  "C8:WON": "Завершено",
+  "C8:LOSE": "Возврат",
+  "C10:NEW": "Новая заявка",
+  "C10:PREPARATION": "Забрано",
+  "C10:PREPAYMENT_INVOIC": "Передано на склад",
+  "C10:WON": "Завершено",
+  "C10:LOSE": "Проблема",
+  "C18:NEW": "Новая заявка",
+  "C18:PREPARATION": "Назначен курьер",
+  "C18:PREPAYMENT_INVOIC": "Забрано курьером",
+  "C18:EXECUTING": "В доставке",
+  "C18:WON": "Доставлено",
+  "C18:LOSE": "Не доставлено / проблема",
+  "C18:APOLOGY": "Возврат",
   NEW: "Новые заказы",
   PREPARATION: "самостоятельные заказы",
   PREPAYMENT_INVOICE: "необходима предоплата",
@@ -365,6 +427,7 @@ export const createPaidPickupOrderSchema = z
 
     if (
       payload.marketplace === "wildberries" ||
+      payload.marketplace === "wildberries_opt" ||
       payload.marketplace === "ozon" ||
       payload.marketplace === "yandex_market" ||
       payload.marketplace === "lamoda" ||
@@ -375,6 +438,19 @@ export const createPaidPickupOrderSchema = z
       }
       if (!payload.lastName) {
         ctx.addIssue({ code: "custom", path: ["lastName"], message: "Укажите фамилию" });
+      }
+      return;
+    }
+
+    if (payload.marketplace === "wildberries_premium") {
+      if (!payload.firstName) {
+        ctx.addIssue({ code: "custom", path: ["firstName"], message: "Укажите имя" });
+      }
+      if (!payload.lastName) {
+        ctx.addIssue({ code: "custom", path: ["lastName"], message: "Укажите фамилию" });
+      }
+      if (payload.totalAmount == null) {
+        ctx.addIssue({ code: "custom", path: ["totalAmount"], message: "Укажите сумму заказа" });
       }
       return;
     }
@@ -567,6 +643,37 @@ export const bitrixPayloadSchema = z.object({
 });
 
 export function mapBitrixStageToOrderStatus(stageId: string | null | undefined): OrderStatus | null {
+  const fullStageId = normalizeFullBitrixStageId(stageId);
+  if (!fullStageId) {
+    return null;
+  }
+
+  switch (fullStageId) {
+    case "C2:AUTO_P02":
+    case "C4:EXECUTING":
+    case "C6:AUTO_P01":
+    case "C18:EXECUTING":
+      return "OUT_FOR_DELIVERY";
+    case "C8:AUTO_P01":
+      return "READY_FOR_PICKUP";
+    case "C8:AUTO_P02":
+    case "C2:WON":
+    case "C4:WON":
+    case "C6:WON":
+    case "C8:WON":
+    case "C10:WON":
+    case "C18:WON":
+      return "COMPLETED";
+    case "C2:LOSE":
+    case "C4:LOSE":
+    case "C6:LOSE":
+    case "C8:LOSE":
+    case "C10:LOSE":
+    case "C18:LOSE":
+    case "C18:APOLOGY":
+      return "CANCELLED";
+  }
+
   const normalizedStageId = normalizeBitrixStageId(stageId);
   if (!normalizedStageId) {
     return null;
@@ -591,6 +698,15 @@ export function mapBitrixStageToOrderStatus(stageId: string | null | undefined):
 }
 
 export function humanizeBitrixStage(stageId: string | null | undefined) {
+  const fullStageId = normalizeFullBitrixStageId(stageId);
+  if (!fullStageId) {
+    return null;
+  }
+
+  if (fullStageId in bitrixStageLabels) {
+    return bitrixStageLabels[fullStageId as keyof typeof bitrixStageLabels];
+  }
+
   const normalizedStageId = normalizeBitrixStageId(stageId);
   if (!normalizedStageId) {
     return null;
@@ -603,12 +719,21 @@ export function humanizePickupPoint(pickupPoint: PickupPointId) {
   return pickupPointById[pickupPoint].label;
 }
 
-function normalizeBitrixStageId(stageId: string | null | undefined) {
+function normalizeFullBitrixStageId(stageId: string | null | undefined) {
   if (!stageId) {
     return null;
   }
 
   const normalized = stageId.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function normalizeBitrixStageId(stageId: string | null | undefined) {
+  const normalized = normalizeFullBitrixStageId(stageId);
   if (!normalized) {
     return null;
   }

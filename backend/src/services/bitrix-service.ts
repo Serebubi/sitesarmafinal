@@ -63,6 +63,13 @@ interface BitrixDealFieldEntry {
   value: number | string | null;
 }
 
+interface BitrixDealRouting {
+  categoryId: number;
+  stageId: string;
+}
+
+type BitrixDealRoutingKey = OrderRecord["marketplace"] | "pickup_standard";
+
 const bitrixDealFieldEnvMap = {
   orderNumber: "BITRIX_DEAL_FIELD_ORDER_NUMBER",
   orderType: "BITRIX_DEAL_FIELD_ORDER_TYPE",
@@ -91,14 +98,46 @@ const bitrixDealFieldEnvMap = {
 } satisfies Record<BitrixDealFieldKey, string>;
 
 const defaultBitrixDealFieldMap: BitrixDealFieldMap = {
-  orderNumber: "UF_CRM_1774909222920",
-  orderType: "UF_CRM_1774909231523",
-  marketplace: "UF_CRM_1774909238633",
-  status: "UF_CRM_1774909246381",
-  pickupAddress: "UF_CRM_1774909256492",
-  itemCount: "UF_CRM_1774908835361",
-  totalAmount: "UF_CRM_1774908871627",
+  orderType: "UF_CRM_DELIVERY_TYPE",
+  customerName: "UF_CRM_RECIPIENT_NAME",
+  customerPhone: "UF_CRM_RECIPIENT_PHONE",
+  itemCount: "UF_CRM_PLACES_COUNT",
+  deliveryAddress: "UF_CRM_DESTINATION_ADDRESS",
+  senderName: "UF_CRM_SENDER_NAME",
 };
+
+const defaultBitrixDealRoutingMap = {
+  pickup_standard: { categoryId: 8, stageId: "C8:NEW" },
+  home_delivery: { categoryId: 18, stageId: "C18:NEW" },
+  cdek: { categoryId: 6, stageId: "C6:NEW" },
+  "5post": { categoryId: 10, stageId: "C10:NEW" },
+  dpd: { categoryId: 10, stageId: "C10:NEW" },
+  avito: { categoryId: 2, stageId: "C2:PREPAYMENT_INVOICE" },
+  wildberries: { categoryId: 4, stageId: "C4:NEW" },
+  wildberries_opt: { categoryId: 4, stageId: "C4:NEW" },
+  wildberries_premium: { categoryId: 4, stageId: "C4:NEW" },
+  ozon: { categoryId: 2, stageId: "C2:PREPARATION" },
+  yandex_market: { categoryId: 2, stageId: "C2:EXECUTING" },
+  lamoda: { categoryId: 10, stageId: "C10:NEW" },
+  goldapple: { categoryId: 10, stageId: "C10:NEW" },
+  letual: { categoryId: 10, stageId: "C10:NEW" },
+  detmir: { categoryId: 10, stageId: "C10:NEW" },
+  courier: { categoryId: 10, stageId: "C10:NEW" },
+  bulky: { categoryId: 10, stageId: "C10:NEW" },
+} satisfies Record<BitrixDealRoutingKey, BitrixDealRouting>;
+
+const bitrixDealRoutingEnvMap = Object.fromEntries(
+  Object.keys(defaultBitrixDealRoutingMap).map((key) => {
+    const envKey = key.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+    return [
+      key,
+      {
+        categoryId: `BITRIX_ROUTE_${envKey}_CATEGORY_ID`,
+        stageId: `BITRIX_ROUTE_${envKey}_STAGE_ID`,
+      },
+    ];
+  }),
+) as Record<BitrixDealRoutingKey, { categoryId: string; stageId: string }>;
 
 export interface BitrixSyncSnapshot {
   crmSyncState: OrderRecord["crmSyncState"];
@@ -263,6 +302,36 @@ function buildCustomerFullName(order: OrderRecord) {
   return parts.length > 0 ? parts.join(" ") : "Клиент";
 }
 
+function parseCategoryId(value: string | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function resolveDealRoutingKey(order: OrderRecord): BitrixDealRoutingKey {
+  if (order.orderType === "pickup_standard") {
+    return "pickup_standard";
+  }
+
+  return order.marketplace;
+}
+
+function getConfiguredDealRouting(order: OrderRecord): BitrixDealRouting {
+  const routingKey = resolveDealRoutingKey(order);
+  const fallbackRouting = defaultBitrixDealRoutingMap[routingKey];
+  const envMap = bitrixDealRoutingEnvMap[routingKey];
+  const configuredCategoryId = parseCategoryId(process.env[envMap.categoryId]);
+  const configuredStageId = process.env[envMap.stageId]?.trim();
+
+  return {
+    categoryId: configuredCategoryId ?? fallbackRouting.categoryId,
+    stageId: configuredStageId || fallbackRouting.stageId,
+  };
+}
+
 function getConfiguredDealFieldMap(): BitrixDealFieldMap {
   const fieldMap: BitrixDealFieldMap = { ...defaultBitrixDealFieldMap };
 
@@ -423,15 +492,16 @@ export class BitrixService {
   }
 
   async syncOrder(order: OrderRecord, attachmentUrl: string | null, productAttachmentUrl: string | null = null): Promise<BitrixSyncSnapshot> {
+    const routing = getConfiguredDealRouting(order);
     const crmContactId = await this.findOrCreateContact(order);
-    const crmDealId = await this.createDeal(order, crmContactId, attachmentUrl, productAttachmentUrl);
+    const crmDealId = await this.createDeal(order, crmContactId, attachmentUrl, productAttachmentUrl, routing);
 
     return createSnapshot({
       crmSyncState: "synced",
       crmContactId,
       crmDealId,
-      crmStageId: "NEW",
-      status: "CREATED",
+      crmStageId: routing.stageId,
+      status: mapBitrixStageToOrderStatus(routing.stageId) ?? "CREATED",
     });
   }
 
@@ -486,16 +556,22 @@ export class BitrixService {
     return normalizedId;
   }
 
-  private async createDeal(order: OrderRecord, crmContactId: string | null, attachmentUrl: string | null, productAttachmentUrl: string | null) {
+  private async createDeal(
+    order: OrderRecord,
+    crmContactId: string | null,
+    attachmentUrl: string | null,
+    productAttachmentUrl: string | null,
+    routing: BitrixDealRouting,
+  ) {
     const dealEntries = buildDealFieldEntries(order, attachmentUrl, productAttachmentUrl);
     const mappedDealFields = buildMappedDealFields(dealEntries, this.dealFieldMap);
     const comments = buildDealComments(dealEntries, this.dealFieldMap);
 
     const dealId = await this.callMethod<string | number>("crm.deal.add", {
       fields: {
-        TITLE: `SUPERBOX #${order.orderNumber}`,
-        CATEGORY_ID: 0,
-        STAGE_ID: "NEW",
+        TITLE: `Sarma Express #${order.orderNumber} - ${humanizeMarketplace(order.marketplace)}`,
+        CATEGORY_ID: routing.categoryId,
+        STAGE_ID: routing.stageId,
         SOURCE_ID: "WEB",
         ORIGINATOR_ID: "SUPERBOX",
         ORIGIN_ID: order.orderNumber,
