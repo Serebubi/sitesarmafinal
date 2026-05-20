@@ -2254,27 +2254,27 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
 
         return (
           <section
-            className="relative overflow-hidden bg-[#3f84e6] bg-cover bg-[position:72%_center] bg-no-repeat"
+            className="relative overflow-hidden bg-[#3f84e6] bg-cover bg-[position:66%_center] bg-no-repeat sm:bg-[position:72%_center]"
             style={{ backgroundImage: "url('/brand/hero-background.png')" }}
           >
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(43,107,210,0.9)_0%,rgba(65,136,229,0.72)_30%,rgba(90,157,239,0.28)_54%,rgba(138,190,248,0.08)_100%)]" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(255,255,255,0.24),transparent_16%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]" />
             <div className="absolute left-0 right-0 top-[66%] h-[3px] bg-[linear-gradient(90deg,rgba(255,255,255,0.1),rgba(255,255,255,0.52),rgba(255,255,255,0.14))] blur-[1px]" />
 
-            <div className="relative mx-auto w-full max-w-[1240px] px-4 pb-28 pt-12 lg:px-6 lg:pb-36 lg:pt-16">
-              <div className="rounded-[36px] border border-white/48 bg-[linear-gradient(180deg,rgba(237,244,255,0.96)_0%,rgba(227,238,252,0.9)_100%)] p-5 pb-24 text-[#12315b] shadow-[0_30px_80px_rgba(39,77,146,0.18)] backdrop-blur-[20px] sm:p-6 sm:pb-28 lg:p-8 lg:pb-32">
+            <div className="relative mx-auto w-full max-w-[1240px] px-3 pb-20 pt-8 sm:px-4 sm:pb-28 sm:pt-12 lg:px-6 lg:pb-36 lg:pt-16">
+              <div className="rounded-[28px] border border-white/48 bg-[linear-gradient(180deg,rgba(237,244,255,0.96)_0%,rgba(227,238,252,0.9)_100%)] p-4 pb-20 text-[#12315b] shadow-[0_24px_60px_rgba(39,77,146,0.16)] backdrop-blur-[20px] sm:rounded-[36px] sm:p-6 sm:pb-28 sm:shadow-[0_30px_80px_rgba(39,77,146,0.18)] lg:p-8 lg:pb-32">
                 <div className="flex flex-col gap-4 border-b border-[#d9e5f8] pb-6">
                   <div>
-                    <p className="text-sm font-black uppercase tracking-[0.22em] text-[#4677cf]">Выбор источника</p>
-                    <h2 className="mt-3 text-3xl font-extrabold leading-tight text-[#13345f] sm:text-[2.5rem]">Маркетплейсы и службы доставки</h2>
-                    <p className="mt-3 max-w-[780px] text-base leading-7 text-[#58739d]">
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#4677cf] sm:text-sm sm:tracking-[0.22em]">Выбор источника</p>
+                    <h2 className="mt-3 text-[2rem] font-extrabold leading-[1.08] text-[#13345f] sm:text-[2.5rem]">Маркетплейсы и службы доставки</h2>
+                    <p className="mt-3 max-w-[780px] text-sm leading-6 text-[#58739d] sm:text-base sm:leading-7">
                       Выберите площадку, откуда нужно забрать заказ. Для части сценариев доступна smart-обработка, для остальных - ручное оформление без потери данных.
                     </p>
                   </div>
 
                 </div>
 
-                <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
                   {paidSourceOptions.map((option) => {
                     const active = option.kind !== "link" && option.kind !== "cancel" && activePickup.marketplace === option.id;
 
@@ -2299,43 +2299,43 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
                             errors: {},
                           });
                         }}
-                        className={`group relative flex min-h-[228px] flex-col items-center overflow-hidden rounded-[28px] border px-5 py-6 text-center transition-all duration-200 ${
+                        className={`group relative flex min-h-[154px] flex-col items-center overflow-hidden rounded-[24px] border px-3 py-4 text-center transition-all duration-200 sm:min-h-[228px] sm:rounded-[28px] sm:px-5 sm:py-6 ${
                           active
                             ? "border-[#8cb7ff] bg-[linear-gradient(180deg,#ffffff_0%,#edf5ff_100%)] shadow-[0_22px_40px_rgba(68,117,194,0.16)]"
                             : "border-[#d7e4f7] bg-white/92 hover:-translate-y-1 hover:border-[#b7cff4] hover:bg-white hover:shadow-[0_20px_34px_rgba(68,117,194,0.12)]"
                         }`}
                       >
                         {active ? (
-                          <span className="absolute bottom-4 right-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(180deg,#5e9df1_0%,#487dd6_100%)] text-sm font-bold text-white shadow-[0_12px_24px_rgba(45,90,175,0.22)]">
+                            <span className="absolute bottom-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[linear-gradient(180deg,#5e9df1_0%,#487dd6_100%)] text-xs font-bold text-white shadow-[0_12px_24px_rgba(45,90,175,0.22)] sm:bottom-4 sm:right-4 sm:h-9 sm:w-9 sm:text-sm">
                             ✓
                           </span>
                         ) : null}
 
-                        <span className="flex h-28 w-28 items-center justify-center rounded-[30px] bg-[#f2f6fc] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+                        <span className="flex h-20 w-20 items-center justify-center rounded-[22px] bg-[#f2f6fc] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] sm:h-28 sm:w-28 sm:rounded-[30px]">
                           {option.kind === "marketplace" ? (
                             <Image
                               src={`/marketplaces/${option.asset}`}
                               alt={option.label}
                               width={156}
                               height={64}
-                              className={`h-14 w-[156px] object-contain transition duration-200 ${
+                              className={`h-9 w-[104px] object-contain transition duration-200 sm:h-14 sm:w-[156px] ${
                                 active ? "" : "grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100"
                               }`}
                             />
                           ) : option.kind === "cancel" ? (
-                            <svg viewBox="0 0 32 32" className="h-16 w-16 fill-none stroke-[#2f7eea]" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <svg viewBox="0 0 32 32" className="h-11 w-11 fill-none stroke-[#2f7eea] sm:h-16 sm:w-16" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                               <path d="M8 7h13l3 3v15.5A2.5 2.5 0 0 1 21.5 28h-11A2.5 2.5 0 0 1 8 25.5Z" />
                               <path d="M21 7v4h4" />
                               <path d="M12 15h7M12 19h5" />
                               <path d="m21.5 20.5 4 4M25.5 20.5l-4 4" />
                             </svg>
                           ) : (
-                            <span className={`text-[3.25rem] ${option.kind === "link" ? "text-[#3f74cb]" : ""}`}>{option.icon}</span>
+                            <span className={`text-[2.35rem] sm:text-[3.25rem] ${option.kind === "link" ? "text-[#3f74cb]" : ""}`}>{option.icon}</span>
                           )}
                         </span>
 
-                        <div className="mt-8 flex flex-1 items-center justify-center">
-                          <p className="text-center text-[1.35rem] font-extrabold leading-tight text-[#123763]">{option.label}</p>
+                        <div className="mt-4 flex flex-1 items-center justify-center sm:mt-8">
+                          <p className="text-center text-[0.95rem] font-extrabold leading-tight text-[#123763] sm:text-[1.35rem]">{option.label}</p>
                         </div>
                       </button>
                     );
@@ -2367,26 +2367,26 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
 
       return (
         <section
-          className="relative overflow-hidden bg-[#3f84e6] bg-cover bg-[position:72%_center] bg-no-repeat"
+          className="relative overflow-hidden bg-[#3f84e6] bg-cover bg-[position:66%_center] bg-no-repeat sm:bg-[position:72%_center]"
           style={{ backgroundImage: "url('/brand/hero-background.png')" }}
         >
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(43,107,210,0.9)_0%,rgba(65,136,229,0.72)_30%,rgba(90,157,239,0.28)_54%,rgba(138,190,248,0.08)_100%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(255,255,255,0.24),transparent_16%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]" />
           <div className="absolute left-0 right-0 top-[66%] h-[3px] bg-[linear-gradient(90deg,rgba(255,255,255,0.1),rgba(255,255,255,0.52),rgba(255,255,255,0.14))] blur-[1px]" />
 
-          <div className="relative mx-auto w-full max-w-[1240px] px-4 pb-28 pt-12 lg:px-6 lg:pb-36 lg:pt-16">
-            <div className="rounded-[36px] border border-white/48 bg-[linear-gradient(180deg,rgba(237,244,255,0.96)_0%,rgba(227,238,252,0.9)_100%)] p-5 pb-24 text-[#12315b] shadow-[0_30px_80px_rgba(39,77,146,0.18)] backdrop-blur-[20px] sm:p-6 sm:pb-28 lg:p-8 lg:pb-32">
+          <div className="relative mx-auto w-full max-w-[1240px] px-3 pb-20 pt-8 sm:px-4 sm:pb-28 sm:pt-12 lg:px-6 lg:pb-36 lg:pt-16">
+            <div className="rounded-[28px] border border-white/48 bg-[linear-gradient(180deg,rgba(237,244,255,0.96)_0%,rgba(227,238,252,0.9)_100%)] p-4 pb-20 text-[#12315b] shadow-[0_24px_60px_rgba(39,77,146,0.16)] backdrop-blur-[20px] sm:rounded-[36px] sm:p-6 sm:pb-28 sm:shadow-[0_30px_80px_rgba(39,77,146,0.18)] lg:p-8 lg:pb-32">
               <div className="flex flex-col gap-4 border-b border-[#d9e5f8] pb-6">
                 <div>
-                  <p className="text-sm font-black uppercase tracking-[0.22em] text-[#4677cf]">Заказ по ссылке</p>
-                  <h2 className="mt-3 text-3xl font-extrabold leading-tight text-[#13345f] sm:text-[2.5rem]">Выберите маркетплейс</h2>
-                  <p className="mt-3 max-w-[780px] text-base leading-7 text-[#58739d]">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#4677cf] sm:text-sm sm:tracking-[0.22em]">Заказ по ссылке</p>
+                  <h2 className="mt-3 text-[2rem] font-extrabold leading-[1.08] text-[#13345f] sm:text-[2.5rem]">Выберите маркетплейс</h2>
+                  <p className="mt-3 max-w-[780px] text-sm leading-6 text-[#58739d] sm:text-base sm:leading-7">
                     Выберите площадку, на которой находится товар. После этого вы перейдёте к оформлению заказа по ссылке, заполнению данных и выбору пункта выдачи.
                   </p>
                 </div>
               </div>
 
-              <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
                 {standardMarketplaces.map((marketplace) => {
                   const active = activePickup.marketplace === marketplace.id;
 
@@ -2402,32 +2402,32 @@ export function SuperboxApp({ initialFlow = "overview" }: { initialFlow?: FlowId
                           errors: {},
                         })
                       }
-                      className={`group relative flex min-h-[228px] flex-col items-center overflow-hidden rounded-[28px] border px-5 py-6 text-center transition-all duration-200 ${
+                      className={`group relative flex min-h-[154px] flex-col items-center overflow-hidden rounded-[24px] border px-3 py-4 text-center transition-all duration-200 sm:min-h-[228px] sm:rounded-[28px] sm:px-5 sm:py-6 ${
                         active
                           ? "border-[#8cb7ff] bg-[linear-gradient(180deg,#ffffff_0%,#edf5ff_100%)] shadow-[0_22px_40px_rgba(68,117,194,0.16)]"
                           : "border-[#d7e4f7] bg-white/92 hover:-translate-y-1 hover:border-[#b7cff4] hover:bg-white hover:shadow-[0_20px_34px_rgba(68,117,194,0.12)]"
                       }`}
                     >
                       {active ? (
-                        <span className="absolute bottom-4 right-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(180deg,#5e9df1_0%,#487dd6_100%)] text-sm font-bold text-white shadow-[0_12px_24px_rgba(45,90,175,0.22)]">
+                        <span className="absolute bottom-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[linear-gradient(180deg,#5e9df1_0%,#487dd6_100%)] text-xs font-bold text-white shadow-[0_12px_24px_rgba(45,90,175,0.22)] sm:bottom-4 sm:right-4 sm:h-9 sm:w-9 sm:text-sm">
                           ✓
                         </span>
                       ) : null}
 
-                      <span className="flex h-28 w-28 items-center justify-center rounded-[30px] bg-[#f2f6fc] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+                      <span className="flex h-20 w-20 items-center justify-center rounded-[22px] bg-[#f2f6fc] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] sm:h-28 sm:w-28 sm:rounded-[30px]">
                         <Image
                           src={`/marketplaces/${marketplace.asset}`}
                           alt={humanizeMarketplace(marketplace.id)}
                           width={156}
                           height={64}
-                          className={`h-14 w-[156px] object-contain transition duration-200 ${
+                          className={`h-9 w-[104px] object-contain transition duration-200 sm:h-14 sm:w-[156px] ${
                             active ? "" : "grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100"
                           }`}
                         />
                       </span>
 
-                      <div className="mt-8 flex flex-1 items-center justify-center">
-                        <p className="text-center text-[1.35rem] font-extrabold leading-tight text-[#123763]">{humanizeMarketplace(marketplace.id)}</p>
+                      <div className="mt-4 flex flex-1 items-center justify-center sm:mt-8">
+                        <p className="text-center text-[0.95rem] font-extrabold leading-tight text-[#123763] sm:text-[1.35rem]">{humanizeMarketplace(marketplace.id)}</p>
                       </div>
                     </button>
                   );

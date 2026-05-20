@@ -130,7 +130,7 @@ const initialState: CalculatorState = {
 };
 
 const fieldClassName =
-  "calculator-field-input mt-1.5 w-full appearance-none border-none bg-transparent p-0 text-base font-bold text-[#173862] shadow-none outline-none ring-0 placeholder:text-[#8aa2c8] focus:border-none focus:outline-none focus:ring-0 focus-visible:outline-none";
+  "calculator-field-input mt-1.5 min-w-0 w-full appearance-none border-none bg-transparent p-0 text-base font-bold text-[#173862] shadow-none outline-none ring-0 placeholder:text-[#8aa2c8] focus:border-none focus:outline-none focus:ring-0 focus-visible:outline-none";
 
 const rubleFormatter = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 0,
@@ -442,11 +442,11 @@ export function DeliveryCalculatorPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#edf2f8] text-[#12243f]">
+    <main className="min-h-screen overflow-x-hidden bg-[#edf2f8] text-[#12243f]">
       <SarmaExpressHeader activeItem="calculator" />
 
       <section
-        className="relative overflow-x-hidden bg-[#4a8de7] bg-cover bg-[position:72%_center] bg-no-repeat"
+        className="relative overflow-hidden bg-[#4a8de7] bg-cover bg-[position:66%_center] bg-no-repeat sm:bg-[position:72%_center]"
         style={{ backgroundImage: "url('/brand/hero-background.png')" }}
       >
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(51,114,214,0.96)_0%,rgba(86,148,232,0.82)_34%,rgba(150,198,248,0.26)_64%,rgba(255,255,255,0)_100%)]" />
@@ -457,14 +457,14 @@ export function DeliveryCalculatorPage() {
           <DotPattern />
         </div>
 
-        <div className="relative mx-auto min-h-[calc(100vh-121px)] w-full max-w-[1320px] box-border px-4 py-8 lg:px-6 lg:py-2">
+        <div className="relative mx-auto min-h-[calc(100vh-121px)] w-full max-w-[1320px] box-border px-3 py-7 sm:px-4 sm:py-8 lg:px-6 lg:py-2">
           <div className="relative z-10 w-full max-w-[860px]">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/36 bg-white/12 px-4 py-2 text-sm font-semibold text-white/92 backdrop-blur-sm lg:hidden">
               <span className="h-2.5 w-2.5 rounded-full bg-[#9fd0ff]" />
               Предварительный расчёт
             </div>
 
-            <h1 className="mt-3 max-w-[760px] text-4xl font-extrabold leading-[1.05] text-white drop-shadow-[0_16px_34px_rgba(20,56,120,0.22)] sm:text-5xl lg:mt-0 lg:text-[2.55rem]">
+            <h1 className="mt-3 max-w-[760px] text-[2.55rem] font-extrabold leading-[1.02] text-white drop-shadow-[0_16px_34px_rgba(20,56,120,0.22)] sm:text-5xl lg:mt-0 lg:text-[2.55rem]">
               Калькулятор
               <br className="lg:hidden" />
               доставки
@@ -476,14 +476,14 @@ export function DeliveryCalculatorPage() {
             </p>
           </div>
 
-          <div className="relative z-10 mt-4 grid gap-4 text-[#173862] lg:mt-2 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="relative z-10 mt-4 grid min-w-0 gap-4 text-[#173862] lg:mt-2 lg:grid-cols-[minmax(0,1fr)_380px]">
             <form
-              className="rounded-[32px] border border-white/62 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(235,244,255,0.9)_100%)] p-4 shadow-[0_28px_80px_rgba(28,78,160,0.2)] backdrop-blur-[20px] lg:p-5"
+              className="min-w-0 rounded-[26px] border border-white/62 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(235,244,255,0.9)_100%)] p-3 shadow-[0_24px_60px_rgba(28,78,160,0.18)] backdrop-blur-[20px] sm:rounded-[32px] sm:p-4 lg:p-5"
               onSubmit={(event) => {
                 event.preventDefault();
               }}
             >
-              <div className="grid gap-3 lg:grid-cols-2">
+              <div className="grid min-w-0 gap-3 lg:grid-cols-2">
                 <FieldShell icon={<PinIcon />} label="Откуда">
                   <ModernSelect options={cityOptions} value={state.from} onChange={(value) => setCityField("from", value)} />
                   <DeliveryModeSelector
@@ -661,7 +661,7 @@ function ResultPanel({
 
   if (activeDialog === "order" && result.status === "ready") {
     return (
-      <aside className="h-fit rounded-[32px] border border-white/62 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-4 text-[#173862] shadow-[0_28px_80px_rgba(28,78,160,0.2)] backdrop-blur-[20px]">
+      <aside className="h-fit min-w-0 rounded-[26px] border border-white/62 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-3 text-[#173862] shadow-[0_24px_60px_rgba(28,78,160,0.18)] backdrop-blur-[20px] sm:rounded-[32px] sm:p-4">
         <OrderRequestDialog from={from} onClose={() => setActiveDialog(null)} result={result} to={to} />
       </aside>
     );
@@ -669,14 +669,14 @@ function ResultPanel({
 
   if (activeDialog === "request" && specialDetails) {
     return (
-      <aside className="h-fit rounded-[32px] border border-white/62 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-4 text-[#173862] shadow-[0_28px_80px_rgba(28,78,160,0.2)] backdrop-blur-[20px]">
+      <aside className="h-fit min-w-0 rounded-[26px] border border-white/62 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-3 text-[#173862] shadow-[0_24px_60px_rgba(28,78,160,0.18)] backdrop-blur-[20px] sm:rounded-[32px] sm:p-4">
         <RequestDialog from={from} onClose={() => setActiveDialog(null)} result={result} to={to} />
       </aside>
     );
   }
 
   return (
-    <aside className="h-fit rounded-[32px] border border-white/62 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-4 text-[#173862] shadow-[0_28px_80px_rgba(28,78,160,0.2)] backdrop-blur-[20px]">
+    <aside className="h-fit min-w-0 rounded-[26px] border border-white/62 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(235,244,255,0.92)_100%)] p-3 text-[#173862] shadow-[0_24px_60px_rgba(28,78,160,0.18)] backdrop-blur-[20px] sm:rounded-[32px] sm:p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#4d78b8]">Итого к оплате</p>
@@ -1195,7 +1195,7 @@ function TransportSelect({
   }, [isOpen]);
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative min-w-0">
       <span className="text-xs font-black uppercase tracking-[0.16em] text-[#4d78b8]">Тип транспорта</span>
       <button
         type="button"
@@ -1279,8 +1279,8 @@ function DeliveryModeSelector({
   const showPickupPointSelector = value === "pvz" && getDeliveryModeAvailability(city, "pvz", chargeableWeight).available;
 
   return (
-    <div className="mt-3">
-      <div className="grid grid-cols-2 gap-2">
+    <div className="mt-3 min-w-0">
+      <div className="grid min-w-0 grid-cols-2 gap-2">
         {options.map((option) => {
           const isSelected = value === option.value && option.available;
 
@@ -1289,7 +1289,7 @@ function DeliveryModeSelector({
               key={option.value}
               type="button"
               disabled={!option.available}
-              className={`min-h-10 rounded-2xl border px-3 text-sm font-black transition ${
+              className={`min-w-0 rounded-2xl border px-2 py-2 text-xs font-black leading-tight transition sm:min-h-10 sm:px-3 sm:text-sm ${
                 isSelected
                   ? "border-[#3f74cb] bg-[#3f74cb] text-white shadow-[0_12px_22px_rgba(46,90,175,0.22)]"
                   : option.available
@@ -1378,10 +1378,10 @@ function PickupPointSelector({
   }
 
   return (
-    <div ref={rootRef} className="relative mt-2">
+    <div ref={rootRef} className="relative mt-2 min-w-0">
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-[#cfe0f7] bg-white/68 px-3 py-2.5 text-left text-sm font-bold text-[#173862] transition hover:bg-white"
+        className="flex w-full min-w-0 items-center justify-between gap-3 rounded-2xl border border-[#cfe0f7] bg-white/68 px-3 py-2.5 text-left text-sm font-bold text-[#173862] transition hover:bg-white"
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         onClick={() => setIsOpen((open) => !open)}
@@ -1550,10 +1550,10 @@ function ModernSelect<T extends string>({
   }, [isOpen]);
 
   return (
-    <div ref={rootRef} className="relative mt-1.5">
+    <div ref={rootRef} className="relative mt-1.5 min-w-0">
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-3 rounded-[18px] bg-transparent text-left text-base font-bold text-[#173862] outline-none"
+        className="flex w-full min-w-0 items-center justify-between gap-3 rounded-[18px] bg-transparent text-left text-base font-bold text-[#173862] outline-none"
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         onClick={() => setIsOpen((open) => !open)}
@@ -1622,7 +1622,7 @@ function ToggleField({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="calculator-field-shell flex items-center gap-3 rounded-[22px] border border-white/58 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(240,246,255,0.9)_100%)] px-4 py-2.5 text-[#173862] shadow-[0_16px_30px_rgba(28,78,160,0.12),inset_0_1px_0_rgba(255,255,255,0.75)]">
+    <div className="calculator-field-shell flex min-w-0 items-center gap-3 rounded-[20px] border border-white/58 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(240,246,255,0.9)_100%)] px-3 py-2.5 text-[#173862] shadow-[0_14px_26px_rgba(28,78,160,0.1),inset_0_1px_0_rgba(255,255,255,0.75)] sm:rounded-[22px] sm:px-4 sm:shadow-[0_16px_30px_rgba(28,78,160,0.12),inset_0_1px_0_rgba(255,255,255,0.75)]">
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(180deg,#edf5ff_0%,#dce9ff_100%)] text-[#3c75d0] shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
         {icon}
       </span>
@@ -1630,7 +1630,7 @@ function ToggleField({
         <span className="block text-xs font-black uppercase tracking-[0.18em] text-[#17212f]">{label}</span>
         <button
           type="button"
-          className="mt-1.5 flex w-full items-center justify-between gap-3 text-left text-base font-bold text-[#173862]"
+          className="mt-1.5 flex w-full min-w-0 items-center justify-between gap-3 text-left text-base font-bold text-[#173862]"
           onClick={() => onChange(!checked)}
         >
           <span>{checked ? onText : offText}</span>
@@ -1655,7 +1655,7 @@ function FieldShell({
   children: ReactNode;
 }) {
   return (
-    <div className="calculator-field-shell flex items-center gap-3 rounded-[22px] border border-white/58 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(240,246,255,0.9)_100%)] px-4 py-2.5 text-[#173862] shadow-[0_16px_30px_rgba(28,78,160,0.12),inset_0_1px_0_rgba(255,255,255,0.75)]">
+    <div className="calculator-field-shell flex min-w-0 items-center gap-3 rounded-[20px] border border-white/58 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(240,246,255,0.9)_100%)] px-3 py-2.5 text-[#173862] shadow-[0_14px_26px_rgba(28,78,160,0.1),inset_0_1px_0_rgba(255,255,255,0.75)] sm:rounded-[22px] sm:px-4 sm:shadow-[0_16px_30px_rgba(28,78,160,0.12),inset_0_1px_0_rgba(255,255,255,0.75)]">
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(180deg,#edf5ff_0%,#dce9ff_100%)] text-[#3c75d0] shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
         {icon}
       </span>

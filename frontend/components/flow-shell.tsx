@@ -26,16 +26,16 @@ export function FlowShell({
   const centered = align === "center";
 
   return (
-    <section className={`flow-surface float-in rounded-[32px] p-6 sm:p-8 ${className ?? ""}`}>
+    <section className={`flow-surface float-in rounded-[24px] p-4 sm:rounded-[32px] sm:p-8 ${className ?? ""}`}>
       <div
         className={`mb-6 flex flex-col gap-4 border-b border-[color:var(--line)] pb-5 ${
           centered ? "items-center text-center" : "sm:flex-row sm:items-end sm:justify-between"
         }`}
       >
         <div className={`space-y-2 ${centered ? "max-w-3xl" : ""}`}>
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[color:var(--accent-strong)]">{eyebrow}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[color:var(--accent-strong)] sm:text-xs sm:tracking-[0.32em]">{eyebrow}</p>
           <div className="space-y-2">
-            <h2 className="font-[family-name:var(--font-display)] text-4xl leading-none text-[color:var(--foreground)] sm:text-5xl">
+            <h2 className="font-[family-name:var(--font-display)] text-3xl leading-none text-[color:var(--foreground)] sm:text-5xl">
               {title}
             </h2>
             <p className="max-w-2xl text-sm leading-7 text-[color:var(--muted)] sm:text-base">{description}</p>

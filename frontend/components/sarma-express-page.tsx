@@ -15,14 +15,14 @@ export function SarmaExpressPage() {
       <SarmaExpressHeader />
 
       <section
-        className="relative overflow-hidden bg-[#3f84e6] bg-cover bg-[position:72%_center] bg-no-repeat"
+        className="relative overflow-hidden bg-[#3f84e6] bg-cover bg-[position:66%_center] bg-no-repeat sm:bg-[position:72%_center]"
         style={{ backgroundImage: "url('/brand/hero-background.png')" }}
       >
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(43,107,210,0.9)_0%,rgba(65,136,229,0.72)_30%,rgba(90,157,239,0.28)_54%,rgba(138,190,248,0.08)_100%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(255,255,255,0.24),transparent_16%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]" />
         <div className="absolute left-0 right-0 top-[66%] h-[3px] bg-[linear-gradient(90deg,rgba(255,255,255,0.1),rgba(255,255,255,0.52),rgba(255,255,255,0.14))] blur-[1px]" />
 
-        <div className="relative mx-auto grid min-h-[620px] w-full max-w-[1240px] gap-12 px-4 pb-32 pt-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(500px,1.05fr)] lg:px-6 lg:pb-40 lg:pt-16">
+        <div className="relative mx-auto grid min-h-[560px] w-full max-w-[1240px] gap-10 px-4 pb-24 pt-10 sm:min-h-[620px] sm:pb-32 sm:pt-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(500px,1.05fr)] lg:px-6 lg:pb-40 lg:pt-16">
           <div className="z-10 flex flex-col justify-center">
             <h1 className="max-w-[620px] text-4xl font-extrabold leading-[1.15] text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.16)] sm:text-5xl lg:text-[4.15rem]">
               Доставка и грузоперевозки
@@ -34,16 +34,16 @@ export function SarmaExpressPage() {
               Доставка из интернет-магазинов, отправления по РФ, сборные грузы и полная загрузка
             </p>
 
-            <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+            <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:gap-4">
               <Link
                 href="/calculator"
-                className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,#2f57c0_0%,#2245a9_100%)] px-9 text-lg font-extrabold text-white shadow-[0_16px_35px_rgba(24,60,142,0.28)] transition-transform duration-200 hover:-translate-y-0.5"
+                className="inline-flex min-h-12 items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#2f57c0_0%,#2245a9_100%)] px-7 text-base font-extrabold text-white shadow-[0_16px_35px_rgba(24,60,142,0.28)] transition-transform duration-200 hover:-translate-y-0.5 sm:min-h-14 sm:rounded-2xl sm:px-9 sm:text-lg"
               >
                 Рассчитать доставку
               </Link>
               <Link
                 href="/superbox?flow=order_lookup"
-                className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl bg-white px-8 text-lg font-semibold text-[#1f2c47] shadow-[0_18px_35px_rgba(18,42,82,0.16)] transition-transform duration-200 hover:-translate-y-0.5"
+                className="inline-flex min-h-12 items-center justify-center gap-3 rounded-[18px] bg-white px-7 text-base font-semibold text-[#1f2c47] shadow-[0_18px_35px_rgba(18,42,82,0.16)] transition-transform duration-200 hover:-translate-y-0.5 sm:min-h-14 sm:rounded-2xl sm:px-8 sm:text-lg"
               >
                 <TrackIcon />
                 отследить груз
@@ -55,16 +55,16 @@ export function SarmaExpressPage() {
       </section>
 
       <section className="relative z-10 mx-auto -mt-16 w-full max-w-[1240px] px-4 pb-8 lg:px-6">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
           {featureCards.map(({ title, icon: Icon }) => (
             <article
               key={title}
-              className="rounded-[26px] bg-white px-6 py-7 text-center shadow-[0_24px_45px_rgba(16,45,88,0.12)] ring-1 ring-[#dce6f4]"
+              className="rounded-[22px] bg-white px-4 py-5 text-center shadow-[0_18px_34px_rgba(16,45,88,0.1)] ring-1 ring-[#dce6f4] sm:rounded-[26px] sm:px-6 sm:py-7 sm:shadow-[0_24px_45px_rgba(16,45,88,0.12)]"
             >
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#f3f7fe] text-[#244d96]">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#f3f7fe] text-[#244d96] sm:h-14 sm:w-14">
                 <Icon />
               </div>
-              <h2 className="mx-auto mt-5 max-w-[210px] text-[1.38rem] font-extrabold leading-tight text-[#0f2548]">{title}</h2>
+              <h2 className="mx-auto mt-4 max-w-[210px] text-base font-extrabold leading-tight text-[#0f2548] sm:mt-5 sm:text-[1.38rem]">{title}</h2>
             </article>
           ))}
         </div>

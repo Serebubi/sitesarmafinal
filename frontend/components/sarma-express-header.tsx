@@ -30,7 +30,7 @@ export function SarmaExpressHeader({ activeItem }: { activeItem?: string }) {
       <Link
         key={item.key}
         href={item.href}
-        className={`rounded-full px-4 py-2 transition-all duration-200 ${
+        className={`whitespace-nowrap rounded-full px-3 py-2 transition-all duration-200 sm:px-4 ${
           isActive
             ? "bg-[#edf4ff] text-[#2c6ed3] shadow-[inset_0_0_0_1px_rgba(44,110,211,0.08)]"
             : "hover:bg-[#f6f9ff] hover:text-[#2c6ed3]"
@@ -42,20 +42,20 @@ export function SarmaExpressHeader({ activeItem }: { activeItem?: string }) {
   };
 
   return (
-    <div className="sticky top-3 z-50 px-3 pt-3 sm:px-4 lg:px-5">
-      <header className="mx-auto w-full max-w-[1706px] rounded-[36px] border border-[#d9e1ef] bg-white/95 shadow-[0_18px_44px_rgba(16,45,88,0.08)] backdrop-blur-xl">
-        <div className="mx-auto flex w-full flex-col gap-3 px-8 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-10">
-          <Link href="/" className="shrink-0">
+    <div className="sticky top-2 z-50 px-3 pt-2 sm:top-3 sm:px-4 sm:pt-3 lg:px-5">
+      <header className="mx-auto w-full max-w-[1706px] rounded-[26px] border border-[#d9e1ef] bg-white/95 shadow-[0_14px_34px_rgba(16,45,88,0.1)] backdrop-blur-xl sm:rounded-[36px] sm:shadow-[0_18px_44px_rgba(16,45,88,0.08)]">
+        <div className="mx-auto flex w-full flex-col gap-2 px-4 py-3 sm:gap-3 sm:px-8 sm:py-5 lg:flex-row lg:items-center lg:justify-between lg:px-10">
+          <Link href="/" className="shrink-0 self-center sm:self-auto">
             <SarmaExpressLogo />
           </Link>
 
-          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[15px] font-semibold text-[#12243f] lg:flex-nowrap lg:justify-end">
+          <nav className="flex w-full max-w-full snap-x items-center gap-2 overflow-x-auto pb-1 text-[13px] font-bold text-[#12243f] [scrollbar-width:none] sm:flex-wrap sm:gap-x-5 sm:gap-y-2 sm:overflow-visible sm:pb-0 sm:text-[15px] sm:font-semibold lg:flex-nowrap lg:justify-end [&::-webkit-scrollbar]:hidden">
             {primaryNavigationItems.map(renderNavigationLink)}
 
             <div className="group relative">
               <button
                 type="button"
-                className={`flex items-center gap-1.5 rounded-full px-4 py-2 transition-all duration-200 ${
+                className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 transition-all duration-200 sm:px-4 ${
                   isServicesActive
                     ? "bg-[#edf4ff] text-[#2c6ed3] shadow-[inset_0_0_0_1px_rgba(44,110,211,0.08)]"
                     : "hover:bg-[#f6f9ff] hover:text-[#2c6ed3]"
@@ -66,7 +66,7 @@ export function SarmaExpressHeader({ activeItem }: { activeItem?: string }) {
                 <ChevronDownIcon />
               </button>
 
-              <div className="pointer-events-none absolute left-0 top-full w-[392px] translate-y-2 overflow-hidden rounded-b-[18px] border border-[#e1e8f4] bg-white opacity-0 shadow-[0_22px_48px_rgba(16,45,88,0.14)] transition-all duration-200 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 max-sm:fixed max-sm:left-6 max-sm:right-6 max-sm:top-[136px] max-sm:w-auto" role="menu">
+              <div className="pointer-events-none absolute left-0 top-full w-[392px] translate-y-2 overflow-hidden rounded-b-[18px] border border-[#e1e8f4] bg-white opacity-0 shadow-[0_22px_48px_rgba(16,45,88,0.14)] transition-all duration-200 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 max-sm:fixed max-sm:left-4 max-sm:right-4 max-sm:top-[116px] max-sm:w-auto" role="menu">
                 <div className="h-1 bg-[#2c72d8]" />
                 <div className="py-2">
                   {serviceNavigationItems.map(({ key, label, href, icon: Icon }) => {
@@ -116,13 +116,13 @@ export function SarmaExpressLogo({ onTruck = false }: { onTruck?: boolean }) {
   }
 
   return (
-    <div className="relative h-[56px] w-[300px] overflow-hidden sm:h-[64px] sm:w-[340px]">
+    <div className="relative h-[42px] w-[222px] overflow-hidden sm:h-[64px] sm:w-[340px]">
       <Image
         src="/brand/sarma-express-logo-header-final.png"
         alt="Сарма Экспресс"
         fill
         priority
-        sizes="(max-width: 640px) 300px, 340px"
+        sizes="(max-width: 640px) 222px, 340px"
         className="object-contain object-left"
       />
     </div>
